@@ -1,0 +1,1581 @@
+# -*- coding: utf-8 -*-
+# Copyright (C) 2026 Dennis Klingspor
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# This file is part of gIraffePro.
+#
+# gIraffePro is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# gIraffePro is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with gIraffePro. If not, see <https://www.gnu.org/licenses/>.
+
+"""
+Model exported as python.
+Name : Green Infrastructure fast filter and estimation Project (GIraFFE-Pro)
+Group : gIraffePro
+With QGIS : 34001
+"""
+import sys
+import importlib
+from qgis.core import (
+	QgsProcessing,
+	QgsProcessingAlgorithm,
+    QgsProcessingMultiStepFeedback,
+    QgsProcessingParameterVectorLayer,
+    QgsProcessingParameterNumber,
+    QgsProcessingParameterFile,
+    QgsProcessingParameterString,
+    QgsProcessingParameterDistance,
+    QgsProcessingParameterFeatureSink,
+    QgsCoordinateReferenceSystem
+)
+from qgis.PyQt.QtGui import QIcon
+from qgis.core import QgsExpression
+from pathlib import Path
+import processing
+
+class GreenInfrastructureFFEProject(QgsProcessingAlgorithm):
+    def icon(self): return QIcon(str(Path(__file__).parent.parent / "logo_giraffe.png"))
+
+    def initAlgorithm(self, config=None):
+        self.addParameter(QgsProcessingParameterVectorLayer('streckenabschnitt_linie', 'Projektachse (Linie)', types=[QgsProcessing.TypeVectorLine], defaultValue=None))
+        self.addParameter(QgsProcessingParameterNumber('puffer_m', 'Suchraum (m)', type=QgsProcessingParameterNumber.Integer, defaultValue=50))
+        self.addParameter(QgsProcessingParameterVectorLayer('_fachdatum_fd_ffh', '1. Fachdatensatz: FFH', types=[QgsProcessing.TypeVectorPolygon], defaultValue=None))
+        self.addParameter(QgsProcessingParameterVectorLayer('_fd_lsg', '2. Fachdatensatz: LSG', optional=True, types=[QgsProcessing.TypeVectorPolygon], defaultValue=None))
+        self.addParameter(QgsProcessingParameterVectorLayer('_fd_lsg_linear', '3. Fachdatensatz: LSG linear', types=[QgsProcessing.TypeVectorLine], defaultValue=''))
+        self.addParameter(QgsProcessingParameterNumber('puffer_lsg_linear_m', 'Puffer LSG linear (m)', type=QgsProcessingParameterNumber.Integer, defaultValue=20))
+        self.addParameter(QgsProcessingParameterVectorLayer('_fd_natiurdenkmal_punkt_28', '4. Fachdatensatz: Natiurdenkmal Punkt (§28)', types=[QgsProcessing.TypeVectorPoint], defaultValue=None))
+        self.addParameter(QgsProcessingParameterNumber('puffer_nd_punkt_m', 'Puffer ND Punkt (m)', type=QgsProcessingParameterNumber.Integer, defaultValue=20))
+        self.addParameter(QgsProcessingParameterVectorLayer('_fd_nd__linear_28', '5. Fachdatensatz: ND  linear (§28)', types=[QgsProcessing.TypeVectorLine], defaultValue=None))
+        self.addParameter(QgsProcessingParameterNumber('puffer_nd_linear_m', 'Puffer ND linear (m)', type=QgsProcessingParameterNumber.Integer, defaultValue=20))
+        self.addParameter(QgsProcessingParameterVectorLayer('_fd_nd__28', '6. Fachdatensatz: ND  (§28)', types=[QgsProcessing.TypeVectorPolygon], defaultValue=None))
+        self.addParameter(QgsProcessingParameterVectorLayer('_fd_spa', '7. Fachdatensatz: SPA', optional=True, types=[QgsProcessing.TypeVectorPolygon], defaultValue=None))
+        self.addParameter(QgsProcessingParameterVectorLayer('_fd_nsg', '8. FD: NSG', optional=True, types=[QgsProcessing.TypeVectorPolygon], defaultValue=None))
+        self.addParameter(QgsProcessingParameterVectorLayer('_fd_gesch_landschaftsbestandteil_glb_punkt_29', '9. Fachdatensatz: gesch. Landschaftsbestandteil (GLB) punkt (§29)', optional=True, types=[QgsProcessing.TypeVectorPoint], defaultValue=None))
+        self.addParameter(QgsProcessingParameterNumber('puffer_glb_pkt_m', 'Puffer GLB pkt. (m)', type=QgsProcessingParameterNumber.Integer, defaultValue=20))
+        self.addParameter(QgsProcessingParameterVectorLayer('_fd_glb_linear_29', '10. Fachdatensatz: GLB linear (§29)', optional=True, types=[QgsProcessing.TypeVectorLine], defaultValue=None))
+        self.addParameter(QgsProcessingParameterNumber('puffer_glb_lin_m', 'Puffer GLB lin. (m)', type=QgsProcessingParameterNumber.Integer, defaultValue=20))
+        self.addParameter(QgsProcessingParameterVectorLayer('_fd_glb_29', '11. Fachdatensatz: GLB (§29)', optional=True, types=[QgsProcessing.TypeVectorPolygon], defaultValue=None))
+        self.addParameter(QgsProcessingParameterVectorLayer('_fd_30_biotope_linear_optional_nach_kreisabfrage', '12. Fachdatensatz: §30 Biotope linear (optional nach Kreisabfrage)', optional=True, types=[QgsProcessing.TypeVectorPolygon], defaultValue=None))
+        self.addParameter(QgsProcessingParameterVectorLayer('_fd_30_biotope_punktuell_optional_nach_kreisabfrage', '13. Fachdatensatz: §30 Biotope punktuell (optional nach Kreisabfrage)', optional=True, types=[QgsProcessing.TypeVectorPoint], defaultValue=None))
+        self.addParameter(QgsProcessingParameterVectorLayer('_fd_30_biotope_flchig_optional_nach_kreisabfrage', '14. Fachdatensatz: §30 Biotope flächig (optional nach Kreisabfrage)', optional=True, types=[QgsProcessing.TypeVectorPolygon], defaultValue=None))
+        self.addParameter(QgsProcessingParameterFile('layerstil_ampel_qml', 'Layerstil Ampel (*.qml)', behavior=QgsProcessingParameterFile.File, fileFilter='Alle Dateien (*.*)', defaultValue=None))
+        self.addParameter(QgsProcessingParameterFile('layerstil_abfraggrenze_qml', 'Layerstil Abfraggrenze (*.qml)', behavior=QgsProcessingParameterFile.File, fileFilter='Alle Dateien (*.*)', defaultValue=None))
+        self.addParameter(QgsProcessingParameterString('strecke', 'Strecke', multiLine=False, defaultValue=None))
+        self.addParameter(QgsProcessingParameterFile('zielordner_giraffepro_ergebnis', 'Zielordner gIraffePro Ergebnis', behavior=QgsProcessingParameterFile.Folder, fileFilter='All files (*.*)', defaultValue=None))
+        self.addParameter(QgsProcessingParameterFile('zielordner_giraffepro_infolayer', 'Zielordner gIraffePro Info-Layer', behavior=QgsProcessingParameterFile.Folder, fileFilter='All files (*.*)', defaultValue=None))
+        self.addParameter(QgsProcessingParameterFile('zielordner_tmp_dateien', 'Zielordner tmp. Dateien', behavior=QgsProcessingParameterFile.Folder, fileFilter='All files (*.*)', defaultValue=None))
+
+    def processAlgorithm(self, parameters, context, model_feedback):
+        # Use a multi-step feedback, so that individual child algorithm progress reports are adjusted for the
+        # overall progress through the model
+        feedback = QgsProcessingMultiStepFeedback(103, model_feedback)
+        results = {}
+        outputs = {}
+        
+      # 1. Werte aus den Parametern auslesen (als Text/String)
+        folder_path_res = self.parameterAsString(parameters, 'zielordner_giraffepro_ergebnis', context)
+        folder_path_info = self.parameterAsString(parameters, 'zielordner_giraffepro_infolayer', context)
+        folder_path_tmp = self.parameterAsString(parameters, 'zielordner_tmp_dateien', context)
+        suffix = self.parameterAsString(parameters, 'strecke', context)
+        
+
+      # 2. Den Zielpfad dynamisch und plattformunabhängig zusammenbauen
+        #info
+        info = str(Path(folder_path_info) / f"gIraffePro_Info_{suffix}.gpkg")
+       
+        #x2BIM-RES
+        res_x2bim_lim= str(Path(folder_path_res) / f"gIraffePro_X2Bim_Abfragegrenzen_{suffix}.geojson")
+        res_x2bim_yel= str(Path(folder_path_res) / f"gIraffePro_X2Bim_Gelb_{suffix}.geojson")
+        res_x2bim_red= str(Path(folder_path_res) / f"gIraffePro_X2Bim_Rot_{suffix}.geojson")
+        res_x2bim_gre= str(Path(folder_path_res) / f"gIraffePro_X2Bim_gre_{suffix}.geojson")
+        
+        #inframaps-res
+        res_inframaps= str(Path(folder_path_res) / f"gIraffePro_InfraMaps_{suffix}.geojson")
+        res_inframaps_lim= str(Path(folder_path_res) / f"gIraffePro_InfraMaps_Abfragegrenzen_{suffix}.geojson")
+        
+        #qgis-res
+        res_qgis= str(Path(folder_path_res) / f"gIraffePro_QGIS_{suffix}.gpkg")
+        
+        #tmp
+        tmp_qgis_tlc= str(Path(folder_path_tmp) / f"gIraffePro_QGIS-Ampel_{suffix}.shp")
+        tmp_qgis_buf= str(Path(folder_path_tmp) / f"gIraffePro_QGIS-0_{suffix}.shp")
+        tmp_qgis_lim= str(Path(folder_path_tmp) / f"gIraffePro_QGIS_Abfragegrenzen_{suffix}.shp")
+        tmp_nsg= str(Path(folder_path_tmp) / f"Info_NSG_{suffix}.shp")
+        tmp_nd_ln= str(Path(folder_path_tmp) / f"Info_ND_lin{suffix}.shp")
+        tmp_nd= str(Path(folder_path_tmp) / f"Info_ND_{suffix}.shp")
+        tmp_nd_pk= str(Path(folder_path_tmp) / f"Info_ND_pkt_{suffix}.shp")
+        tmp_nd_gir= str(Path(folder_path_tmp) / f"gIraffePro_ND_tmp_{suffix}.gpkg")
+        tmp_ffh= str(Path(folder_path_tmp) / f"Info_FFH_{suffix}.shp")
+        tmp_spa= str(Path(folder_path_tmp) / f"Info_SPA_{suffix}.shp")
+        tmp_glb_gir= str(Path(folder_path_tmp) / f"gIraffePro_GLB_tmp_{suffix}.gpkg")
+        tmp_glb_po= str(Path(folder_path_tmp) / f"Info_GLB_Poly_{suffix}.shp")
+        tmp_glb_pk= str(Path(folder_path_tmp) / f"Info_GLB_Pkt_{suffix}.shp")
+        tmp_glb_ln= str(Path(folder_path_tmp) / f"Info_GLB_Ln_{suffix}.shp")
+        tmp_lsg_gir= str(Path(folder_path_tmp) / f"gIraffePro_LSG_tmp_{suffix}.gpkg")
+        tmp_lsg_ln= str(Path(folder_path_tmp) / f"Info_LSG_lin_{suffix}.shp")
+        tmp_lsg= str(Path(folder_path_tmp) / f"Info_LSG_{suffix}.shp")
+        
+       
+        # Puffer GLB Punkt
+        alg_params = {
+            'DISSOLVE': False,
+            'DISTANCE': parameters['puffer_glb_pkt_m'],
+            'END_CAP_STYLE': 0,  # Round
+            'INPUT': self.parameterAsVectorLayer(parameters, '_fd_gesch_landschaftsbestandteil_glb_punkt_29', context),
+            'JOIN_STYLE': 0,  # Round
+            'MITER_LIMIT': 2,
+            'SEGMENTS': 5,
+            'SEPARATE_DISJOINT': False,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['PufferGlbPunkt'] = processing.run('native:buffer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(1)
+        if feedback.isCanceled():
+            return {}
+
+        # Puffer ND linear
+        alg_params = {
+            'DISSOLVE': False,
+            'DISTANCE': self.parameterAsVectorLayer(parameters, 'puffer_nd_linear_m', context),
+            'END_CAP_STYLE': 0,  # Round
+            'INPUT': parameters['_fd_nd__linear_28'],
+            'JOIN_STYLE': 0,  # Round
+            'MITER_LIMIT': 2,
+            'SEGMENTS': 5,
+            'SEPARATE_DISJOINT': False,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['PufferNdLinear'] = processing.run('native:buffer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(2)
+        if feedback.isCanceled():
+            return {}
+
+        # Streckenabschnittspuffer
+        alg_params = {
+            'DISSOLVE': False,
+            'DISTANCE': parameters['puffer_m'],
+            'END_CAP_STYLE': 0,  # Round
+            'INPUT': self.parameterAsVectorLayer(parameters, 'streckenabschnitt_linie', context),
+            'JOIN_STYLE': 0,  # Round
+            'MITER_LIMIT': 2,
+            'SEGMENTS': 5,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Streckenabschnittspuffer'] = processing.run('native:buffer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(3)
+        if feedback.isCanceled():
+            return {}
+
+        # Streckenabschnittpuffer bereinigt
+        alg_params = {
+            'FIELD': [''],
+            'INPUT': outputs['Streckenabschnittspuffer']['OUTPUT'],
+            'SEPARATE_DISJOINT': False,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['StreckenabschnittpufferBereinigt'] = processing.run('native:dissolve', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(4)
+        if feedback.isCanceled():
+            return {}
+
+        # Puffer ND punkt
+        alg_params = {
+            'DISSOLVE': False,
+            'DISTANCE': parameters['puffer_nd_punkt_m'],
+            'END_CAP_STYLE': 0,  # Round
+            'INPUT': self.parameterAsVectorLayer(parameters, '_fd_natiurdenkmal_punkt_28', context),
+            'JOIN_STYLE': 0,  # Round
+            'MITER_LIMIT': 2,
+            'SEGMENTS': 5,
+            'SEPARATE_DISJOINT': False,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['PufferNdPunkt'] = processing.run('native:buffer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(5)
+        if feedback.isCanceled():
+            return {}
+
+        # Puffer GLB Linie
+        alg_params = {
+            'DISSOLVE': False,
+            'DISTANCE': parameters['puffer_glb_lin_m'],
+            'END_CAP_STYLE': 0,  # Round
+            'INPUT': self.parameterAsVectorLayer(parameters, '_fd_glb_linear_29', context),
+            'JOIN_STYLE': 0,  # Round
+            'MITER_LIMIT': 2,
+            'SEGMENTS': 5,
+            'SEPARATE_DISJOINT': False,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['PufferGlbLinie'] = processing.run('native:buffer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(6)
+        if feedback.isCanceled():
+            return {}
+
+        # LSG_Strecke
+        alg_params = {
+            'GRID_SIZE': None,
+            'INPUT': outputs['StreckenabschnittpufferBereinigt']['OUTPUT'],
+            'INPUT_FIELDS': ['NULL'],
+            'OVERLAY': parameters['_fd_lsg'],
+            'OVERLAY_FIELDS': [''],
+            'OVERLAY_FIELDS_PREFIX': None,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Lsg_strecke'] = processing.run('native:intersection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(7)
+        if feedback.isCanceled():
+            return {}
+
+        # Puffer LSG linear
+        alg_params = {
+            'DISSOLVE': False,
+            'DISTANCE': parameters['puffer_lsg_linear_m'],
+            'END_CAP_STYLE': 0,  # Round
+            'INPUT': self.parameterAsVectorLayer(parameters, '_fd_lsg_linear', context),
+            'JOIN_STYLE': 0,  # Round
+            'MITER_LIMIT': 2,
+            'SEGMENTS': 5,
+            'SEPARATE_DISJOINT': False,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['PufferLsgLinear'] = processing.run('native:buffer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(8)
+        if feedback.isCanceled():
+            return {}
+
+        # ND_lin_Strecke
+        alg_params = {
+            'GRID_SIZE': None,
+            'INPUT': outputs['StreckenabschnittpufferBereinigt']['OUTPUT'],
+            'INPUT_FIELDS': [''],
+            'OVERLAY': outputs['PufferNdLinear']['OUTPUT'],
+            'OVERLAY_FIELDS': [''],
+            'OVERLAY_FIELDS_PREFIX': None,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Nd_lin_strecke'] = processing.run('native:intersection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(9)
+        if feedback.isCanceled():
+            return {}
+
+        # Drop field(s) ND_lin_Strecke
+        alg_params = {
+            'COLUMN': ['fid'],
+            'INPUT': outputs['Nd_lin_strecke']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['DropFieldsNd_lin_strecke'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(10)
+        if feedback.isCanceled():
+            return {}
+
+        # Geometrien reparieren Streckenpuffer
+        alg_params = {
+            'INPUT': outputs['StreckenabschnittpufferBereinigt']['OUTPUT'],
+            'METHOD': 1,  # Structure
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['GeometrienReparierenStreckenpuffer'] = processing.run('native:fixgeometries', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(11)
+        if feedback.isCanceled():
+            return {}
+
+        # GLB_Strecke_Poly
+        alg_params = {
+            'GRID_SIZE': None,
+            'INPUT': outputs['StreckenabschnittpufferBereinigt']['OUTPUT'],
+            'INPUT_FIELDS': [''],
+            'OVERLAY': parameters['_fd_glb_29'],
+            'OVERLAY_FIELDS': [''],
+            'OVERLAY_FIELDS_PREFIX': None,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Glb_strecke_poly'] = processing.run('native:intersection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(12)
+        if feedback.isCanceled():
+            return {}
+
+        # LSG_lin_Strecke
+        alg_params = {
+            'GRID_SIZE': None,
+            'INPUT': outputs['StreckenabschnittpufferBereinigt']['OUTPUT'],
+            'INPUT_FIELDS': [''],
+            'OVERLAY': outputs['PufferLsgLinear']['OUTPUT'],
+            'OVERLAY_FIELDS': [''],
+            'OVERLAY_FIELDS_PREFIX': None,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Lsg_lin_strecke'] = processing.run('native:intersection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(13)
+        if feedback.isCanceled():
+            return {}
+
+        # ND_Strecke
+        alg_params = {
+            'GRID_SIZE': None,
+            'INPUT': outputs['StreckenabschnittpufferBereinigt']['OUTPUT'],
+            'INPUT_FIELDS': [''],
+            'OVERLAY': parameters['_fd_nd__28'],
+            'OVERLAY_FIELDS': [''],
+            'OVERLAY_FIELDS_PREFIX': None,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Nd_strecke'] = processing.run('native:intersection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(14)
+        if feedback.isCanceled():
+            return {}
+
+        # FFH_Strecke
+        alg_params = {
+            'GRID_SIZE': None,
+            'INPUT': outputs['StreckenabschnittpufferBereinigt']['OUTPUT'],
+            'INPUT_FIELDS': ['NULL'],
+            'OVERLAY': parameters['_fachdatum_fd_ffh'],
+            'OVERLAY_FIELDS': [''],
+            'OVERLAY_FIELDS_PREFIX': None,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Ffh_strecke'] = processing.run('native:intersection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(15)
+        if feedback.isCanceled():
+            return {}
+
+        # NSG_Strecke
+        alg_params = {
+            'GRID_SIZE': None,
+            'INPUT': outputs['StreckenabschnittpufferBereinigt']['OUTPUT'],
+            'INPUT_FIELDS': [''],
+            'OVERLAY': parameters['_fd_nsg'],
+            'OVERLAY_FIELDS': [''],
+            'OVERLAY_FIELDS_PREFIX': None,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Nsg_strecke'] = processing.run('native:intersection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(16)
+        if feedback.isCanceled():
+            return {}
+
+        # Wert_ND_linear
+        alg_params = {
+            'FIELDS': ['Wert_ND'],
+            'INPUT': outputs['Nd_lin_strecke']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Wert_nd_linear'] = processing.run('native:retainfields', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(17)
+        if feedback.isCanceled():
+            return {}
+
+        # SPA_Strecke
+        alg_params = {
+            'GRID_SIZE': None,
+            'INPUT': outputs['StreckenabschnittpufferBereinigt']['OUTPUT'],
+            'INPUT_FIELDS': [''],
+            'OVERLAY': parameters['_fd_spa'],
+            'OVERLAY_FIELDS': [''],
+            'OVERLAY_FIELDS_PREFIX': None,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Spa_strecke'] = processing.run('native:intersection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(18)
+        if feedback.isCanceled():
+            return {}
+
+        # Drop field(s) LSG_Strecke
+        alg_params = {
+            'COLUMN': ['fid'],
+            'INPUT': outputs['Lsg_strecke']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['DropFieldsLsg_strecke'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(19)
+        if feedback.isCanceled():
+            return {}
+
+        # Drop field(s) FFH_Strecke
+        alg_params = {
+            'COLUMN': ['fid'],
+            'INPUT': outputs['Ffh_strecke']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['DropFieldsFfh_strecke'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(20)
+        if feedback.isCanceled():
+            return {}
+
+        # ND_Strecke punkt
+        alg_params = {
+            'GRID_SIZE': None,
+            'INPUT': outputs['StreckenabschnittpufferBereinigt']['OUTPUT'],
+            'INPUT_FIELDS': [''],
+            'OVERLAY': outputs['PufferNdPunkt']['OUTPUT'],
+            'OVERLAY_FIELDS': [''],
+            'OVERLAY_FIELDS_PREFIX': None,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Nd_streckePunkt'] = processing.run('native:intersection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(21)
+        if feedback.isCanceled():
+            return {}
+
+        # GLB_Strecke_Punkt
+        alg_params = {
+            'GRID_SIZE': None,
+            'INPUT': outputs['StreckenabschnittpufferBereinigt']['OUTPUT'],
+            'INPUT_FIELDS': [''],
+            'OVERLAY': outputs['PufferGlbPunkt']['OUTPUT'],
+            'OVERLAY_FIELDS': [''],
+            'OVERLAY_FIELDS_PREFIX': None,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Glb_strecke_punkt'] = processing.run('native:intersection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(22)
+        if feedback.isCanceled():
+            return {}
+
+        # Wert_LSG
+        alg_params = {
+            'FIELDS': ['Wert_LSG'],
+            'INPUT': outputs['Lsg_strecke']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Wert_lsg'] = processing.run('native:retainfields', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(23)
+        if feedback.isCanceled():
+            return {}
+
+        # Wert_NSG
+        alg_params = {
+            'FIELDS': ['Wert_NSG'],
+            'INPUT': outputs['Nsg_strecke']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Wert_nsg'] = processing.run('native:retainfields', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(24)
+        if feedback.isCanceled():
+            return {}
+
+        # Wert_LSG_linear
+        alg_params = {
+            'FIELDS': ['Wert_LSG'],
+            'INPUT': outputs['Lsg_lin_strecke']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Wert_lsg_linear'] = processing.run('native:retainfields', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(25)
+        if feedback.isCanceled():
+            return {}
+
+        # Wert_SPA
+        alg_params = {
+            'FIELDS': ['Wert_SPA'],
+            'INPUT': outputs['Spa_strecke']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Wert_spa'] = processing.run('native:retainfields', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(26)
+        if feedback.isCanceled():
+            return {}
+
+        # Wert_GLB_poly
+        alg_params = {
+            'FIELDS': ['Wert_GLB'],
+            'INPUT': outputs['Glb_strecke_poly']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Wert_glb_poly'] = processing.run('native:retainfields', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(27)
+        if feedback.isCanceled():
+            return {}
+
+        # GLB_Strecke_Linie
+        alg_params = {
+            'GRID_SIZE': None,
+            'INPUT': outputs['StreckenabschnittpufferBereinigt']['OUTPUT'],
+            'INPUT_FIELDS': [''],
+            'OVERLAY': outputs['PufferGlbLinie']['OUTPUT'],
+            'OVERLAY_FIELDS': [''],
+            'OVERLAY_FIELDS_PREFIX': None,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Glb_strecke_linie'] = processing.run('native:intersection', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(28)
+        if feedback.isCanceled():
+            return {}
+
+        # Vektorobjekt in Datei speichern LSG
+        alg_params = {
+            'ACTION_ON_EXISTING_FILE': 0,  # Create or overwrite file
+            'DATASOURCE_OPTIONS': None,
+            'INPUT': outputs['DropFieldsLsg_strecke']['OUTPUT'],
+            'LAYER_NAME': None,
+            'LAYER_OPTIONS': None,
+            'OUTPUT': tmp_lsg
+        }
+        outputs['VektorobjektInDateiSpeichernLsg'] = processing.run('native:savefeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(29)
+        if feedback.isCanceled():
+            return {}
+
+        # Drop field(s) GLB Poly
+        alg_params = {
+            'COLUMN': ['fid'],
+            'INPUT': outputs['Glb_strecke_poly']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['DropFieldsGlbPoly'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(30)
+        if feedback.isCanceled():
+            return {}
+
+        # Wert_FFH
+        alg_params = {
+            'FIELDS': ['Wert_FFH'],
+            'INPUT': outputs['Ffh_strecke']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Wert_ffh'] = processing.run('native:retainfields', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(31)
+        if feedback.isCanceled():
+            return {}
+
+        # Drop field(s) ND_Strecke punkt
+        alg_params = {
+            'COLUMN': ['fid'],
+            'INPUT': outputs['Nd_streckePunkt']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['DropFieldsNd_streckePunkt'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(32)
+        if feedback.isCanceled():
+            return {}
+
+        # Drop field(s) NSG_Strecke
+        alg_params = {
+            'COLUMN': ['fid'],
+            'INPUT': outputs['Nsg_strecke']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['DropFieldsNsg_strecke'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(33)
+        if feedback.isCanceled():
+            return {}
+
+        # Wert_GLB_punkt
+        alg_params = {
+            'FIELDS': ['Wert_GLB'],
+            'INPUT': outputs['Glb_strecke_punkt']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Wert_glb_punkt'] = processing.run('native:retainfields', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(34)
+        if feedback.isCanceled():
+            return {}
+
+        # Drop field(s) GLB_Strecke_Punkt
+        alg_params = {
+            'COLUMN': ['fid'],
+            'INPUT': outputs['Glb_strecke_punkt']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['DropFieldsGlb_strecke_punkt'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(35)
+        if feedback.isCanceled():
+            return {}
+
+        # Vektorobjekt in Datei speichern NSG
+        alg_params = {
+            'ACTION_ON_EXISTING_FILE': 0,  # Create or overwrite file
+            'DATASOURCE_OPTIONS': None,
+            'INPUT': outputs['DropFieldsNsg_strecke']['OUTPUT'],
+            'LAYER_NAME': None,
+            'LAYER_OPTIONS': None,
+            'OUTPUT': tmp_nsg
+        }
+        outputs['VektorobjektInDateiSpeichernNsg'] = processing.run('native:savefeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(36)
+        if feedback.isCanceled():
+            return {}
+
+        # Wert_ND_punkt
+        alg_params = {
+            'FIELDS': ['Wert_ND'],
+            'INPUT': outputs['Nd_streckePunkt']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Wert_nd_punkt'] = processing.run('native:retainfields', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(37)
+        if feedback.isCanceled():
+            return {}
+
+        # Wert_ND
+        alg_params = {
+            'FIELDS': ['Wert_ND'],
+            'INPUT': outputs['Nd_strecke']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Wert_nd'] = processing.run('native:retainfields', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(38)
+        if feedback.isCanceled():
+            return {}
+
+        # Vektorobjekt in Datei speichern ND punkt
+        alg_params = {
+            'ACTION_ON_EXISTING_FILE': 0,  # Create or overwrite file
+            'DATASOURCE_OPTIONS': None,
+            'INPUT': outputs['DropFieldsNd_streckePunkt']['OUTPUT'],
+            'LAYER_NAME': None,
+            'LAYER_OPTIONS': None,
+            'OUTPUT': tmp_nd_pk
+        }
+        outputs['VektorobjektInDateiSpeichernNdPunkt'] = processing.run('native:savefeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(39)
+        if feedback.isCanceled():
+            return {}
+
+        # Vektorobjekt in Datei speichern ND linear
+        alg_params = {
+            'ACTION_ON_EXISTING_FILE': 0,  # Create or overwrite file
+            'DATASOURCE_OPTIONS': None,
+            'INPUT': outputs['DropFieldsNd_lin_strecke']['OUTPUT'],
+            'LAYER_NAME': None,
+            'LAYER_OPTIONS': None,
+            'OUTPUT': tmp_nd_ln
+        }
+        outputs['VektorobjektInDateiSpeichernNdLinear'] = processing.run('native:savefeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(40)
+        if feedback.isCanceled():
+            return {}
+
+        # Wert_GLB_linie
+        alg_params = {
+            'FIELDS': ['Wert_GLB'],
+            'INPUT': outputs['Glb_strecke_linie']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Wert_glb_linie'] = processing.run('native:retainfields', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(41)
+        if feedback.isCanceled():
+            return {}
+
+        # Drop field(s) ND_Strecke
+        alg_params = {
+            'COLUMN': ['fid'],
+            'INPUT': outputs['Nd_strecke']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['DropFieldsNd_strecke'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(42)
+        if feedback.isCanceled():
+            return {}
+
+        # Vektorobjekt in Datei speichern FFH
+        alg_params = {
+            'ACTION_ON_EXISTING_FILE': 0,  # Create or overwrite file
+            'DATASOURCE_OPTIONS': None,
+            'INPUT': outputs['DropFieldsFfh_strecke']['OUTPUT'],
+            'LAYER_NAME': None,
+            'LAYER_OPTIONS': None,
+            'OUTPUT': tmp_ffh
+        }
+        outputs['VektorobjektInDateiSpeichernFfh'] = processing.run('native:savefeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(43)
+        if feedback.isCanceled():
+            return {}
+
+        # Drop field(s) LSG_lin_Strecke
+        alg_params = {
+            'COLUMN': ['fid'],
+            'INPUT': outputs['Lsg_lin_strecke']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['DropFieldsLsg_lin_strecke'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(44)
+        if feedback.isCanceled():
+            return {}
+
+        # Drop field(s) SPA
+        alg_params = {
+            'COLUMN': ['fid'],
+            'INPUT': outputs['Spa_strecke']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['DropFieldsSpa'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(45)
+        if feedback.isCanceled():
+            return {}
+
+        # Vektorobjekt in Datei speichern GLB Poly
+        alg_params = {
+            'ACTION_ON_EXISTING_FILE': 0,  # Create or overwrite file
+            'DATASOURCE_OPTIONS': None,
+            'INPUT': outputs['DropFieldsGlbPoly']['OUTPUT'],
+            'LAYER_NAME': None,
+            'LAYER_OPTIONS': None,
+            'OUTPUT': tmp_glb_po
+        }
+        outputs['VektorobjektInDateiSpeichernGlbPoly'] = processing.run('native:savefeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(46)
+        if feedback.isCanceled():
+            return {}
+
+        # Vereinigen (mehrere) ND
+        alg_params = {
+            'INPUT': outputs['Wert_nd_punkt']['OUTPUT'],
+            'OUTPUT': tmp_nd_gir,
+            'OVERLAYS': [outputs['Wert_nd']['OUTPUT'],outputs['Wert_nd_linear']['OUTPUT']],
+            'OVERLAY_FIELDS_PREFIX': None
+        }
+        outputs['VereinigenMehrereNd'] = processing.run('native:multiunion', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(47)
+        if feedback.isCanceled():
+            return {}
+
+        # Vektorobjekt in Datei speichern SPA
+        alg_params = {
+            'ACTION_ON_EXISTING_FILE': 0,  # Create or overwrite file
+            'DATASOURCE_OPTIONS': None,
+            'INPUT': outputs['DropFieldsSpa']['OUTPUT'],
+            'LAYER_NAME': None,
+            'LAYER_OPTIONS': None,
+            'OUTPUT': tmp_spa
+        }
+        outputs['VektorobjektInDateiSpeichernSpa'] = processing.run('native:savefeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(48)
+        if feedback.isCanceled():
+            return {}
+
+        # Splitter_bereinigen_ND
+        alg_params = {
+            'input_splinter_1': outputs['VereinigenMehrereNd']['OUTPUT'],
+            'output_healed_1': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Splitter_bereinigen_nd'] = processing.run('giraffepro:cleanup_1', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(49)
+        if feedback.isCanceled():
+            return {}
+
+        # Vereinigen (mehrere) GLB
+        alg_params = {
+            'INPUT': outputs['Wert_glb_punkt']['OUTPUT'],
+            'OUTPUT': tmp_glb_gir,
+            'OVERLAYS': [outputs['Wert_glb_linie']['OUTPUT'],outputs['Wert_glb_poly']['OUTPUT']],
+            'OVERLAY_FIELDS_PREFIX': None
+        }
+        outputs['VereinigenMehrereGlb'] = processing.run('native:multiunion', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(50)
+        if feedback.isCanceled():
+            return {}
+
+        # Vereinigungen_LSG
+        alg_params = {
+            'GRID_SIZE': None,
+            'INPUT': outputs['Wert_lsg']['OUTPUT'],
+            'OUTPUT': tmp_lsg_gir,
+            'OVERLAY': outputs['Wert_lsg_linear']['OUTPUT'],
+            'OVERLAY_FIELDS_PREFIX': None
+        }
+        outputs['Vereinigungen_lsg'] = processing.run('native:union', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(51)
+        if feedback.isCanceled():
+            return {}
+
+        # Vektorobjekt in Datei speichern ND
+        alg_params = {
+            'ACTION_ON_EXISTING_FILE': 0,  # Create or overwrite file
+            'DATASOURCE_OPTIONS': None,
+            'INPUT': outputs['DropFieldsNd_strecke']['OUTPUT'],
+            'LAYER_NAME': None,
+            'LAYER_OPTIONS': None,
+            'OUTPUT': tmp_nd
+        }
+        outputs['VektorobjektInDateiSpeichernNd'] = processing.run('native:savefeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(52)
+        if feedback.isCanceled():
+            return {}
+
+        # Vektorobjekt in Datei speichern GLB punkt
+        alg_params = {
+            'ACTION_ON_EXISTING_FILE': 0,  # Create or overwrite file
+            'DATASOURCE_OPTIONS': None,
+            'INPUT': outputs['DropFieldsGlb_strecke_punkt']['OUTPUT'],
+            'LAYER_NAME': None,
+            'LAYER_OPTIONS': None,
+            'OUTPUT': tmp_glb_pk
+        }
+        outputs['VektorobjektInDateiSpeichernGlbPunkt'] = processing.run('native:savefeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(53)
+        if feedback.isCanceled():
+            return {}
+
+        # Drop field(s) GLB_Strecke_Linie
+        alg_params = {
+            'COLUMN': ['fid'],
+            'INPUT': outputs['Glb_strecke_linie']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['DropFieldsGlb_strecke_linie'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(54)
+        if feedback.isCanceled():
+            return {}
+
+        # Vektorobjekt in Datei speichern LSG linear
+        alg_params = {
+            'ACTION_ON_EXISTING_FILE': 0,  # Create or overwrite file
+            'DATASOURCE_OPTIONS': None,
+            'INPUT': outputs['DropFieldsLsg_lin_strecke']['OUTPUT'],
+            'LAYER_NAME': None,
+            'LAYER_OPTIONS': None,
+            'OUTPUT': tmp_lsg_ln
+        }
+        outputs['VektorobjektInDateiSpeichernLsgLinear'] = processing.run('native:savefeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(55)
+        if feedback.isCanceled():
+            return {}
+
+        # Splitter_bereinigen_GLB
+        alg_params = {
+            'input_splinter_1': outputs['VereinigenMehrereGlb']['OUTPUT'],
+            'output_healed_1': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Splitter_bereinigen_glb'] = processing.run('giraffepro:cleanup_1', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(56)
+        if feedback.isCanceled():
+            return {}
+
+        # Splitter_bereinigen_LSG
+        alg_params = {
+            'input_splinter_1': outputs['Vereinigungen_lsg']['OUTPUT'],
+            'output_healed_1': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Splitter_bereinigen_lsg'] = processing.run('giraffepro:cleanup_1', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(57)
+        if feedback.isCanceled():
+            return {}
+
+        # Feldrechner MX ND
+        alg_params = {
+            'FIELD_LENGTH': 0,
+            'FIELD_NAME': 'Wert_ND',
+            'FIELD_PRECISION': 0,
+            'FIELD_TYPE': 1,  # Integer (32 bit)
+            'FORMULA': 'max(Wert_ND,Wert_ND_2,Wert_ND_3)',
+            'INPUT': outputs['Splitter_bereinigen_nd']['output_healed_1'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['FeldrechnerMxNd'] = processing.run('native:fieldcalculator', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(58)
+        if feedback.isCanceled():
+            return {}
+
+        # Auflösen ND
+        alg_params = {
+            'FIELD': ['fid'],
+            'INPUT': outputs['FeldrechnerMxNd']['OUTPUT'],
+            'SEPARATE_DISJOINT': False,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['AuflsenNd'] = processing.run('native:dissolve', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(59)
+        if feedback.isCanceled():
+            return {}
+
+        # Wert ND fin
+        alg_params = {
+            'FIELDS': ['Wert_ND'],
+            'INPUT': outputs['AuflsenNd']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['WertNdFin'] = processing.run('native:retainfields', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(60)
+        if feedback.isCanceled():
+            return {}
+
+        # Vektorobjekt in Datei speichern GLB Linie
+        alg_params = {
+            'ACTION_ON_EXISTING_FILE': 0,  # Create or overwrite file
+            'DATASOURCE_OPTIONS': None,
+            'INPUT': outputs['DropFieldsGlb_strecke_linie']['OUTPUT'],
+            'LAYER_NAME': None,
+            'LAYER_OPTIONS': None,
+            'OUTPUT': tmp_glb_ln
+        }
+        outputs['VektorobjektInDateiSpeichernGlbLinie'] = processing.run('native:savefeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(61)
+        if feedback.isCanceled():
+            return {}
+
+        # Geometrien reparieren NDfin
+        alg_params = {
+            'INPUT': outputs['WertNdFin']['OUTPUT'],
+            'METHOD': 1,  # Structure
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['GeometrienReparierenNdfin'] = processing.run('native:fixgeometries', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(62)
+        if feedback.isCanceled():
+            return {}
+
+        # Feldrechner mx GLB
+        alg_params = {
+            'FIELD_LENGTH': 0,
+            'FIELD_NAME': 'Wert_GLB',
+            'FIELD_PRECISION': 0,
+            'FIELD_TYPE': 1,  # Integer (32 bit)
+            'FORMULA': 'max(Wert_GLB,Wert_GLB_2,Wert_GLB_3)',
+            'INPUT': outputs['Splitter_bereinigen_glb']['output_healed_1'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['FeldrechnerMxGlb'] = processing.run('native:fieldcalculator', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(63)
+        if feedback.isCanceled():
+            return {}
+
+        # Infolayer erzeugen
+        alg_params = {
+            'EXPORT_RELATED_LAYERS': False,
+            'LAYERS': [outputs['VektorobjektInDateiSpeichernFfh']['OUTPUT'],outputs['VektorobjektInDateiSpeichernGlbPunkt']['OUTPUT'],outputs['VektorobjektInDateiSpeichernGlbLinie']['OUTPUT'],outputs['VektorobjektInDateiSpeichernGlbPoly']['OUTPUT'],outputs['VektorobjektInDateiSpeichernLsg']['OUTPUT'],outputs['VektorobjektInDateiSpeichernNdPunkt']['OUTPUT'],outputs['VektorobjektInDateiSpeichernSpa']['OUTPUT'],outputs['VektorobjektInDateiSpeichernNsg']['OUTPUT'],outputs['VektorobjektInDateiSpeichernLsgLinear']['OUTPUT'],outputs['VektorobjektInDateiSpeichernNdLinear']['OUTPUT'],outputs['VektorobjektInDateiSpeichernNd']['OUTPUT']],
+            'OUTPUT': info,
+            'OVERWRITE': False,
+            'SAVE_METADATA': True,
+            'SAVE_STYLES': True,
+            'SELECTED_FEATURES_ONLY': False
+        }
+        outputs['InfolayerErzeugen'] = processing.run('native:package', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(64)
+        if feedback.isCanceled():
+            return {}
+
+        # Feldrechner LSG mx
+        alg_params = {
+            'FIELD_LENGTH': 0,
+            'FIELD_NAME': 'Wert_LSG',
+            'FIELD_PRECISION': 0,
+            'FIELD_TYPE': 1,  # Integer (32 bit)
+            'FORMULA': 'max(Wert_LSG, Wert_LSG_1)',
+            'INPUT': outputs['Splitter_bereinigen_lsg']['output_healed_1'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['FeldrechnerLsgMx'] = processing.run('native:fieldcalculator', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(65)
+        if feedback.isCanceled():
+            return {}
+
+        # Auflösen GLB
+        alg_params = {
+            'FIELD': ['fid'],
+            'INPUT': outputs['FeldrechnerMxGlb']['OUTPUT'],
+            'SEPARATE_DISJOINT': False,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['AuflsenGlb'] = processing.run('native:dissolve', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(66)
+        if feedback.isCanceled():
+            return {}
+
+        # Auflösen LSG
+        alg_params = {
+            'FIELD': ['fid'],
+            'INPUT': outputs['FeldrechnerLsgMx']['OUTPUT'],
+            'SEPARATE_DISJOINT': False,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['AuflsenLsg'] = processing.run('native:dissolve', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(67)
+        if feedback.isCanceled():
+            return {}
+
+        # Wert GLB fin
+        alg_params = {
+            'FIELDS': ['Wert_GLB'],
+            'INPUT': outputs['AuflsenGlb']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['WertGlbFin'] = processing.run('native:retainfields', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(68)
+        if feedback.isCanceled():
+            return {}
+
+        # Wert LSG fin
+        alg_params = {
+            'FIELDS': ['Wert_LSG'],
+            'INPUT': outputs['AuflsenLsg']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['WertLsgFin'] = processing.run('native:retainfields', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(69)
+        if feedback.isCanceled():
+            return {}
+
+        # Geometrien reparieren GLBfin
+        alg_params = {
+            'INPUT': outputs['WertGlbFin']['OUTPUT'],
+            'METHOD': 1,  # Structure
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['GeometrienReparierenGlbfin'] = processing.run('native:fixgeometries', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(70)
+        if feedback.isCanceled():
+            return {}
+
+        # Geometrien reparieren_LSGfin
+        alg_params = {
+            'INPUT': outputs['WertLsgFin']['OUTPUT'],
+            'METHOD': 1,  # Structure
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['GeometrienReparieren_lsgfin'] = processing.run('native:fixgeometries', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(71)
+        if feedback.isCanceled():
+            return {}
+
+        # Vereinigen (mehrere)
+        alg_params = {
+            'INPUT': outputs['Wert_ffh']['OUTPUT'],
+            'OVERLAYS': [outputs['Wert_spa']['OUTPUT'],outputs['Wert_nsg']['OUTPUT'],outputs['GeometrienReparieren_lsgfin']['OUTPUT'],outputs['GeometrienReparierenNdfin']['OUTPUT'],outputs['GeometrienReparierenGlbfin']['OUTPUT']],
+            'OVERLAY_FIELDS_PREFIX': None,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['VereinigenMehrere'] = processing.run('native:multiunion', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(72)
+        if feedback.isCanceled():
+            return {}
+
+        # Splitter_bereinigen_giraffe
+        alg_params = {
+            'input_splinter_1': outputs['VereinigenMehrere']['OUTPUT'],
+            'output_healed_1': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Splitter_bereinigen_giraffe'] = processing.run('giraffepro:cleanup_1', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(73)
+        if feedback.isCanceled():
+            return {}
+
+        # Max Wert filtern
+        alg_params = {
+            'FIELD_LENGTH': 0,
+            'FIELD_NAME': 'Bewertung',
+            'FIELD_PRECISION': 0,
+            'FIELD_TYPE': 1,  # Integer (32 bit)
+            'FORMULA': 'max(Wert_FFH,Wert_LSG,Wert_SPA,Wert_NSG,Wert_GLB,Wert_ND)',
+            'INPUT': outputs['Splitter_bereinigen_giraffe']['output_healed_1'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['MaxWertFiltern'] = processing.run('native:fieldcalculator', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(74)
+        if feedback.isCanceled():
+            return {}
+
+        # Tabelle bereinigen giraffe Ergebnis
+        alg_params = {
+            'COLUMN': ['Wert_FFH','Wert_LSG','Wert_SPA','Wert_ND','Wert_NSG','Wert_GLB','area'],
+            'INPUT': outputs['MaxWertFiltern']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['TabelleBereinigengiraffeErgebnis'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(75)
+        if feedback.isCanceled():
+            return {}
+
+        # Geometrien reparieren giraffe Ergebnis
+        alg_params = {
+            'INPUT': outputs['TabelleBereinigengiraffeErgebnis']['OUTPUT'],
+            'METHOD': 1,  # Structure
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['GeometrienReparierengiraffeErgebnis'] = processing.run('native:fixgeometries', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(76)
+        if feedback.isCanceled():
+            return {}
+
+        # Vereinfachen giraffe Bewertung
+        alg_params = {
+            'FIELD': ['Bewertung'],
+            'INPUT': outputs['GeometrienReparierengiraffeErgebnis']['OUTPUT'],
+            'SEPARATE_DISJOINT': False,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['VereinfachengiraffeBewertung'] = processing.run('native:dissolve', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(77)
+        if feedback.isCanceled():
+            return {}
+
+        # giraffe Ampel
+        alg_params = {
+            'COLUMN': ['fid'],
+            'INPUT': outputs['VereinfachengiraffeBewertung']['OUTPUT'],
+           'OUTPUT': tmp_qgis_tlc
+        }
+        outputs['giraffeAmpel'] = processing.run('native:deletecolumn', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(78)
+        if feedback.isCanceled():
+            return {}
+
+        # Auflösen_giraffe_Ergebnis
+        alg_params = {
+            'FIELD': [''],
+            'INPUT': outputs['GeometrienReparierengiraffeErgebnis']['OUTPUT'],
+            'SEPARATE_DISJOINT': False,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['Auflsen_giraffe_ergebnis'] = processing.run('native:dissolve', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(79)
+        if feedback.isCanceled():
+            return {}
+
+        # Layer in Projekt laden Ampel
+        alg_params = {
+            'INPUT': outputs['giraffeAmpel']['OUTPUT'],
+            'NAME': 'gIraffePro Ampel'
+        }
+        outputs['LayerInProjektLadenAmpel'] = processing.run('native:loadlayer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(80)
+        if feedback.isCanceled():
+            return {}
+
+        # Geometrien reparieren giraffe Aufgeloest
+        alg_params = {
+            'INPUT': outputs['Auflsen_giraffe_ergebnis']['OUTPUT'],
+            'METHOD': 1,  # Structure
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['GeometrienReparierengiraffeAufgeloest'] = processing.run('native:fixgeometries', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(81)
+        if feedback.isCanceled():
+            return {}
+
+        # Infra Maps Viewer geoJson 4326
+        alg_params = {
+            'INPUT': outputs['giraffeAmpel']['OUTPUT'],
+            'OPERATION': None,
+            'TARGET_CRS': QgsCoordinateReferenceSystem('EPSG:4326'),
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['InfraMapsViewerGeojson4326'] = processing.run('native:reprojectlayer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(82)
+        if feedback.isCanceled():
+            return {}
+
+        # Layerstil setzen Ampel
+        alg_params = {
+            'INPUT': outputs['LayerInProjektLadenAmpel']['OUTPUT'],
+            'STYLE': parameters['layerstil_ampel_qml']
+        }
+        outputs['LayerstilSetzenAmpel'] = processing.run('native:setlayerstyle', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(83)
+        if feedback.isCanceled():
+            return {}
+
+        # Vektorobjekt in Datei speichern Streckenpuffer
+        alg_params = {
+            'DATASOURCE_OPTIONS': None,
+            'INPUT': outputs['StreckenabschnittpufferBereinigt']['OUTPUT'],
+            'LAYER_NAME': None,
+            'LAYER_OPTIONS': None,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['VektorobjektInDateiSpeichernStreckenpuffer'] = processing.run('native:savefeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(84)
+        if feedback.isCanceled():
+            return {}
+
+        # Differenz Ergebnis Streckenpuffer
+        alg_params = {
+            'GRID_SIZE': None,
+            'INPUT': outputs['GeometrienReparierenStreckenpuffer']['OUTPUT'],
+            'OUTPUT': tmp_qgis_buf,
+            'OVERLAY': outputs['GeometrienReparierengiraffeAufgeloest']['OUTPUT']
+        }
+        outputs['DifferenzErgebnisStreckenpuffer'] = processing.run('native:difference', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(85)
+        if feedback.isCanceled():
+            return {}
+
+        # giraffe Ergebnis InfraMaps
+        alg_params = {
+            'ACTION_ON_EXISTING_FILE': 0,  # Create or overwrite file
+            'DATASOURCE_OPTIONS': None,
+            'INPUT': outputs['InfraMapsViewerGeojson4326']['OUTPUT'],
+            'LAYER_NAME': None,
+            'LAYER_OPTIONS': None,
+            'OUTPUT': res_inframaps
+        }
+        outputs['giraffeErgebnisInframaps'] = processing.run('native:savefeatures', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(86)
+        if feedback.isCanceled():
+            return {}
+
+        # Abfrageraum QGIS
+        alg_params = {
+            'INPUT': outputs['VektorobjektInDateiSpeichernStreckenpuffer']['OUTPUT'],
+            'OUTPUT': tmp_qgis_lim
+        }
+        outputs['AbfrageraumQgis'] = processing.run('native:polygonstolines', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(87)
+        if feedback.isCanceled():
+            return {}
+
+        # Layer reprojizieren 3857 giraffe Ergebnis
+        alg_params = {
+            'INPUT': outputs['giraffeErgebnisInframaps']['OUTPUT'],
+            'OPERATION': None,
+            'TARGET_CRS': QgsCoordinateReferenceSystem('EPSG:3857'),
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['LayerReprojizieren3857giraffeErgebnis'] = processing.run('native:reprojectlayer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(88)
+        if feedback.isCanceled():
+            return {}
+
+        # Mehr- zu einteilig Abfrageraum
+        alg_params = {
+            'INPUT': outputs['AbfrageraumQgis']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['MehrZuEinteiligAbfrageraum'] = processing.run('native:multiparttosingleparts', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(89)
+        if feedback.isCanceled():
+            return {}
+
+        # Layer in Projekt laden Abfragegrenze
+        alg_params = {
+            'INPUT': outputs['AbfrageraumQgis']['OUTPUT'],
+            'NAME': 'Abfragegrenze'
+        }
+        outputs['LayerInProjektLadenAbfragegrenze'] = processing.run('native:loadlayer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(90)
+        if feedback.isCanceled():
+            return {}
+
+        # Layer in Projekt laden keine Kollision
+        alg_params = {
+            'INPUT': outputs['DifferenzErgebnisStreckenpuffer']['OUTPUT'],
+            'NAME': 'gIraffePro - keine Kollision'
+        }
+        outputs['LayerInProjektLadenKeineKollision'] = processing.run('native:loadlayer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(91)
+        if feedback.isCanceled():
+            return {}
+
+        # Mehr- zu einteilig X2BIM
+        alg_params = {
+            'INPUT': outputs['LayerReprojizieren3857giraffeErgebnis']['OUTPUT'],
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['MehrZuEinteiligX2bim'] = processing.run('native:multiparttosingleparts', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(92)
+        if feedback.isCanceled():
+            return {}
+
+        # Abfrageraum X2BIM
+        alg_params = {
+            'CONVERT_CURVED_GEOMETRIES': False,
+            'INPUT': outputs['MehrZuEinteiligAbfrageraum']['OUTPUT'],
+            'OPERATION': None,
+            'OUTPUT': res_x2bim_lim,
+            'TARGET_CRS': QgsCoordinateReferenceSystem('EPSG:3857')
+        }
+        outputs['AbfrageraumX2bim'] = processing.run('native:reprojectlayer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(93)
+        if feedback.isCanceled():
+            return {}
+
+        # giraffe Ergebnis QGIS
+        alg_params = {
+            'EXPORT_RELATED_LAYERS': False,
+            'LAYERS': [outputs['giraffeAmpel']['OUTPUT'],outputs['DifferenzErgebnisStreckenpuffer']['OUTPUT'],outputs['AbfrageraumQgis']['OUTPUT']],
+            'OUTPUT': res_qgis,
+            'OVERWRITE': False,
+            'SAVE_METADATA': True,
+            'SAVE_STYLES': True,
+            'SELECTED_FEATURES_ONLY': False
+        }
+        outputs['giraffeErgebnisQgis'] = processing.run('native:package', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(94)
+        if feedback.isCanceled():
+            return {}
+
+        # Nach Attribut extrahieren - gelb
+        alg_params = {
+            'FIELD': 'Bewertung',
+            'INPUT': outputs['MehrZuEinteiligX2bim']['OUTPUT'],
+            'OPERATOR': 0,  # =
+            'VALUE': '2',
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['NachAttributExtrahierenGelb'] = processing.run('native:extractbyattribute', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(95)
+        if feedback.isCanceled():
+            return {}
+
+        # Splitter_bereinigen_gelb
+        alg_params = {
+            'OUTPUT': res_x2bim_yel,
+            'input_splinter_2': outputs['NachAttributExtrahierenGelb']['OUTPUT']
+        }
+        outputs['Splitter_bereinigen_gelb'] = processing.run('giraffepro:cleanup_2', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(96)
+        if feedback.isCanceled():
+            return {}
+
+        # Layerstil setzen KK
+        alg_params = {
+            'INPUT': outputs['LayerInProjektLadenKeineKollision']['OUTPUT'],
+            'STYLE': parameters['layerstil_ampel_qml']
+        }
+        outputs['LayerstilSetzenKk'] = processing.run('native:setlayerstyle', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(97)
+        if feedback.isCanceled():
+            return {}
+
+        # Layerstil setzen
+        alg_params = {
+            'INPUT': outputs['LayerInProjektLadenAbfragegrenze']['OUTPUT'],
+            'STYLE': parameters['layerstil_abfraggrenze_qml']
+        }
+        outputs['LayerstilSetzen'] = processing.run('native:setlayerstyle', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(98)
+        if feedback.isCanceled():
+            return {}
+
+        # Abfrageraum Inframaps
+        alg_params = {
+            'CONVERT_CURVED_GEOMETRIES': False,
+            'INPUT': outputs['AbfrageraumX2bim']['OUTPUT'],
+            'OPERATION': None,
+            'OUTPUT': res_inframaps_lim,
+            'TARGET_CRS': QgsCoordinateReferenceSystem('EPSG:4326')
+        }
+        outputs['AbfrageraumInframaps'] = processing.run('native:reprojectlayer', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(99)
+        if feedback.isCanceled():
+            return {}
+
+        # Nach Attribut extrahieren rot
+        alg_params = {
+            'FIELD': 'Bewertung',
+            'INPUT': outputs['MehrZuEinteiligX2bim']['OUTPUT'],
+            'OPERATOR': 0,  # =
+            'VALUE': '3',
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['NachAttributExtrahierenRot'] = processing.run('native:extractbyattribute', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(100)
+        if feedback.isCanceled():
+            return {}
+
+        # Nach Attribut extrahieren gruen
+        alg_params = {
+            'FIELD': 'Bewertung',
+            'INPUT': outputs['MehrZuEinteiligX2bim']['OUTPUT'],
+            'OPERATOR': 0,  # =
+            'VALUE': '1',
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }
+        outputs['NachAttributExtrahierenGruen'] = processing.run('native:extractbyattribute', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(101)
+        if feedback.isCanceled():
+            return {}
+
+        # Splitter_bereinigen_rot
+        alg_params = {
+           'OUTPUT': res_x2bim_red,
+            'input_splinter_2': outputs['NachAttributExtrahierenRot']['OUTPUT']
+        }
+        outputs['Splitter_bereinigen_rot'] = processing.run('giraffepro:cleanup_2', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+
+        feedback.setCurrentStep(102)
+        if feedback.isCanceled():
+            return {}
+
+        # Splitter_bereinigen_gruen
+        alg_params = {
+            'OUTPUT': res_x2bim_gre,
+            'input_splinter_2': outputs['NachAttributExtrahierenGruen']['OUTPUT']
+        }
+        outputs['Splitter_bereinigen_gruen'] = processing.run('giraffepro:cleanup_2', alg_params, context=context, feedback=feedback, is_child_algorithm=True)
+        
+        results['OUTPUT_InfolayerErzeugen'] = info,
+        results['OUTPUT_AbfrageraumX2bim'] = res_x2bim_lim,
+        results['OUTPUT_Splitter_bereinigen_gelb'] = res_x2bim_yel,
+        results['OUTPUT_Splitter_bereinigen_rot'] = res_x2bim_red,
+        results['OUTPUT_Splitter_bereinigen_gruen'] = res_x2bim_gre,
+        results['OUTPUT_giraffeErgebnisInframaps'] = res_inframaps,
+        results['OUTPUT_AbfrageraumInframaps'] = res_inframaps_lim,
+        results['OUTPUT_giraffeErgebnisQgis'] = res_qgis,
+        results['OUTPUT_giraffeAmpel'] = tmp_qgis_tlc,
+        results['OUTPUT_DifferenzErgebnisStreckenpuffer'] = tmp_qgis_buf
+        results['OUTPUT_AbfrageraumQgis'] = tmp_qgis_lim
+        results['OUTPUT_VektorobjektInDateiSpeichernNsg'] = tmp_nsg
+        results['OUTPUT_VektorobjektInDateiSpeichernNdLinear'] = tmp_nd_ln
+        results['OUTPUT_VektorobjektInDateiSpeichernNd'] = tmp_nd
+        results['OUTPUT_VektorobjektInDateiSpeichernNdPunkt'] = tmp_nd_pk
+        results['OUTPUT_VereinigenMehrereNd'] = tmp_nd_gir
+        results['OUTPUT_VektorobjektInDateiSpeichernFfh'] = tmp_ffh
+        results['OUTPUT_VektorobjektInDateiSpeichernSpa'] = tmp_spa
+        results['OUTPUT_VereinigenMehrereGlb'] = tmp_glb_gir
+        results['OUTPUT_VektorobjektInDateiSpeichernGlbPoly'] = tmp_glb_po
+        results['OUTPUT_VektorobjektInDateiSpeichernGlbPunkt'] = tmp_glb_pk
+        results['OUTPUT_VektorobjektInDateiSpeichernGlbLinie'] = tmp_glb_ln
+        results['OUTPUT_Vereinigungen_lsg'] = tmp_lsg_gir
+        results['OUTPUT_VektorobjektInDateiSpeichernLsgLinear'] = tmp_lsg_ln
+        results['OUTPUT_VektorobjektInDateiSpeichernLsg'] = tmp_lsg
+        
+        return results
+
+    def name(self):
+        return 'giraffe_main'
+
+    def displayName(self):
+        return 'Green Infrastructure fast filter and estimation Project (gIraffePro)'
+
+    def group(self):
+        return 'Verarbeitung'
+
+    def groupId(self):
+        return 'verarbeitung'
+
+    def shortHelpString(self):
+        return """<html><body><p><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd">
+<html><head><meta name="qrichtext" content="1" /><style type="text/css">
+</style></head><body style=" font-family:'Sans Serif'; font-size:9pt; font-weight:400; font-style:normal;">
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;">Die deutsche Naturschutzgesetzgebung differenziert Flächen und Objekte nach ihrem Schutzstatus. Viele dieser Geometrien sind Teil einer grünen Infrastruktur und werden von den Behörden als Gendateninfrastruktur bereit gestellt. Das planerische Gewicht der beauflagten Flächen steigt stetig. Eine frühe Kenntnis vorhandener Restriktionen trägt maßgeblich zum Projekterfolg bei.
+
+Die Datengrundlage ist jedoch ebenso umfangreich wie vielfältig. Und oft auch erheblich fragmentiert. Zudem ist naturschutzfachlicher Sachverstand in der Regel in die erste Ideenskizzen eines Infrastrukturprojektes noch nicht eingebunden.
+Das Green Infrastructure fast filtering and estimation project verwendet nach Ampellogik vorklassifizierte Datensätze beauflagter Flächen und dünnt landesweite Flickenteppiche anhand variabler Puffer aus. Das Ergebnis ermöglicht Planern und Projektsteuerern eine schnelle, überschlägige Einschätzung vorhandener Zugriffshürden - gIraffePro vermeidet und minimiert Konfliktpotenzial von Beginn an. </p>
+<br>
+<h2>Eingaben</h2>
+<h3>Projektachse</h3>
+<p>Achse einer Linienbaustelle. (Liniengeometrie)</p>
+<h3>Suchraum (m)</h3>
+<p>Suchraum des Vorhabens beidseitig der Achse</p>
+<h3>Fachdatensätze</h3>
+<p>Bestandteile der grünen INfrastruktur: FFH und SPA Gebiete, Landschaftsschutzgebiete, Naturschuitzgebiete, Naturdenkmäler und geschützte Landschaftsbestandteile. Punkt und Liniendatensätze benötigen einen Puffer. Die EIngangsdaten müssen über Werfelder verfügen, die der gIraffePro-Logik entsprechen.</p>
+<h3>Ampelstil</h3>
+<p>gIraffePro-Layerstil (*.gml) in Ampellogik</p>
+<h3>Stil der Abfragegrenze</h3>
+<p>gIraffePro-Layerstil (*.gml) der Abfragegrenze</p>
+<h3>Strecke</h3>
+<p>Bezeichnung des Berzugsraumes</p>
+<h3>gIraffePro Ergebnis</h3>
+<p>Ausgabeordner der Ampellogik. Speicherort für bewertete Flächen mit Restriktionen, Abfragegrenze, Flächen ohne Restriktionen. Ausgegeben werden Datensätze zur Verwendung in X2Bim (Plattform der DB E&C), InfraMaps (Plattform der DB InfraGo) und zur Verwendung in QGis. Für die beiden Projektarbeitsviewer werden Suchraumgrenzen und Flächengeometrieen der Ampellogik separat voneinander generiert. </p>
+<h3>gIraffePro Info Layer</h3>
+<p>Ausgabeordner des Info Layers (ggpkg, EPSG 25832). Speicherort für Detailinfos zu den bewerteten Schutzgebieten und Objekten. </p>
+<h3>temporäre Dateien</h3>
+<p>Kontrolldateien, die bei Ablauf des Arbeitsprozesses erstellt werden</p>
+<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><br /></p></body></html></p>
+<p align="right">Algorithm version: 1.0</p></body></html>"""
+
+    def createInstance(self):
+        return GreenInfrastructureFFEProject()
