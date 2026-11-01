@@ -1,18 +1,22 @@
 # gIraffePro
 
-**Grüne Infrastruktur frühzeitig filtern und einschätzen – in jedem Projekt!**
+**Grüne Infrastruktur in der Projektphase 0 sichtbar machen.**
 
-Version 1.0.6 · Stand: 31. Oktober 2026
+Plugin-Version 1.0.6 · Dokumentation: 1. November 2026
 
 [Homepage](https://giraffepro.de/) · [Quellcode](https://github.com/geogiraffer/gIraffePro/) · [Fehler melden](https://github.com/geogiraffer/gIraffePro/issues) · [Releases](https://github.com/geogiraffer/gIraffePro/releases)
 
-> **English summary:** gIraffePro is a QGIS Processing plugin for preparing protected-area datasets and screening potential conflicts with planned infrastructure using configurable buffers and traffic-light ratings.
+> **English summary:** gIraffePro is a QGIS Processing plugin that supports early decisions on linear infrastructure projects. It filters existing environmental datasets and uses an adjustable three-level weighting scheme, configurable search areas and traffic-light maps to make potential environmental constraints visible to project managers and steering groups. It supports preliminary screening and does not replace a detailed environmental assessment.
 
 ## Zweck
 
-gIraffePro unterstützt die frühe Einschätzung möglicher Konflikte zwischen geplanten Infrastrukturvorhaben und grüner Bestandsinfrastruktur. Das Plugin bereitet Fachdaten mit einer nutzerdefinierten Bewertung vor und verarbeitet sie anschließend entlang einer Projektachse innerhalb variabler Suchräume.
+gIraffePro unterstützt die überschlägige Einschätzung potenzieller Betroffenheiten grüner Infrastruktur bei linienförmigen Infrastrukturvorhaben. Das Plugin bereitet vorhandene naturschutzfachliche Daten auf und wertet sie entlang einer Projektachse innerhalb variabler Suchräume aus.
 
-Die Ergebnisse dienen einer überschlägigen planerischen Einschätzung. Sie ersetzen keine fachliche Prüfung oder behördliche Entscheidung. Aussagekraft und Vollständigkeit hängen von den Eingangsdaten, der gewählten Bewertung und den Puffereinste
+Bereits vor der vertieften Planung – in der **Projektphase 0** – werden wichtige räumliche Weichen gestellt. Logistik, Technik und Flächenmanagement priorisieren Flächen anhand ihrer jeweiligen Anforderungen. Umweltplanerischer Sachverstand ist zu diesem Zeitpunkt häufig noch nicht eingebunden. gIraffePro bereitet Umweltinformationen für Entscheidungstragende in Management und Projektsteuerung verständlich auf. So können Steuerungsgremien potenzielle Betroffenheiten frühzeitig in die Abwägung räumlicher Lösungsansätze einbeziehen und planerischen Risiken begegnen, bevor sich eine Planung verfestigt.
+
+Das Vorbereitungswerkzeug enthält einen **Vorschlag für ein dreistufiges Gewichtungsschema**, das fachkundige Nutzende prüfen und an die Fragestellung anpassen können. Die anschließende Ampeldarstellung reduziert die Komplexität für einen schnellen Überblick; ein ergänzender Info-Layer erhält den Bezug zu den zugrunde liegenden Fachdaten.
+
+Die Aussagekraft hängt von Datenumfang, Aktualität, Gewichtung und Puffereinstellungen ab. **Eine grüne Darstellung bestätigt keine Konfliktfreiheit.** Die Ergebnisse unterstützen eine erste Orientierung und ersetzen keine vertiefte umweltfachliche Prüfung oder fachrechtliche Zulassung.
 
 ## Voraussetzungen
 
@@ -52,6 +56,8 @@ Beide Werkzeuge sind außerdem über das Plugin-Menü und eigene Toolbar-Schaltf
 
 Das Werkzeug verarbeitet folgende elf Eingaben. Punkt-, Linien- und Flächenvarianten derselben Fachdatenart erhalten bewusst denselben Wertfeldnamen.
 
+Die voreingestellten Werte von **1 bis 3** sind ein Vorschlag für ein Gewichtungsschema und keine allgemeingültige oder behördliche Einstufung. Fachkundige Nutzende können die Werte prüfen und anpassen. Das verwendete Schema und etwaige Änderungen sollten für die spätere Einordnung der Ergebnisse dokumentiert werden.
+
 | Nr. | Fachdaten | Geometrie | Wertfeld |
 | --- | --- | --- | --- |
 | 1 | FFH-Gebiet (FFH) | Fläche | `Wert_FFH` |
@@ -67,7 +73,7 @@ Das Werkzeug verarbeitet folgende elf Eingaben. Punkt-, Linien- und Flächenvari
 | 11 | geschützte Landschaftsbestandteile (GLB)  | Fläche | `Wert_GLB` |
 
 1. Die Fachlayer auswählen.
-2. Die Bewertung von **1 bis 3** je Datensatz fachlich festlegen; voreingestellte Werte können geändert werden.
+2. Das vorgeschlagene Gewichtungsschema fachlich prüfen und die Bewertung von **1 bis 3** je Datensatz bei Bedarf anpassen.
 3. Bundesland-Kennung und Ausgabeordner angeben.
 4. Werkzeug ausführen. Linien und Flächen durchlaufen vorher die Geometriereparatur; Punktdaten erhalten das Wertfeld direkt.
 
@@ -82,6 +88,23 @@ Die Ausgabe erfolgt je Fachdatenart als eigene GeoJSON-Datei, beispielsweise `gI
 5. Verarbeitung starten und Ergebnisse fachlich prüfen.
 
 Das Hauptwerkzeug erstellt unter anderem Ausgaben für QGIS, X2Bim und InfraMaps sowie einen Info-Layer. Je nach Ausgabe werden GeoPackage, GeoJSON und temporäre Shapefiles verwendet. Die tatsächlichen Zielpfade ergeben sich aus den gewählten Ordnern und der Streckenbezeichnung.
+
+## Beispiel: Bahnstrecke 2200 in Niedersachsen
+
+Das Beispiel zeigt den Weg von vorhandenen Strecken- und Naturschutzdaten zur aufbereiteten Entscheidungsgrundlage für eine frühe Projektphase.
+
+- [Beispielpaket herunterladen: gIraffePro_Strecke2200.zip](https://github.com/geogiraffer/gIraffePro/releases/download/v1.0.6/gIraffePro_Strecke2200.zip)
+- [Release mit Plugin und Beispielpaket](https://github.com/geogiraffer/gIraffePro/releases/tag/v1.0.6)
+- [Bebilderte Anleitung auf der Homepage](https://giraffepro.de/docs/GIRAFFEPRO/BEISPIEL/)
+
+1. Das vollständige Beispielpaket herunterladen und entpacken. Die Ordnerstruktur beibehalten.
+2. Die beiliegende `README.md` lesen. Sie erläutert den Inhalt, den Arbeitsablauf sowie Datenquellen und Nutzungsbedingungen.
+3. `gIraffePro_Beispiel.qgz` in QGIS öffnen. Die lokalen Datenquellen werden über relative Pfade eingebunden.
+4. Die Arbeitsschritte mit den Werkzeugen **Vorbereitung** und **Verarbeitung** nachvollziehen; Hinweise und Parameter in der Beispiel-README beachten.
+
+**Die beiden ZIP-Dateien haben unterschiedliche Zwecke:** Die Plugin-ZIP wird in QGIS über „Aus ZIP installieren“ installiert. Das Beispielpaket wird dagegen entpackt und als QGIS-Projekt geöffnet.
+
+Alle im Beispiel bereitgestellten Ausgangsdaten wurden im **November 2026** heruntergeladen. Das Bezugsjahr 2026 ist nicht mit dem jeweiligen fachlichen Datenstand gleichzusetzen. Maßgeblich sind die Angaben und Originalunterlagen im Beispielpaket. Die Softwarelizenz des Plugins gilt nicht automatisch für die Geodaten.
 
 ## Entwicklung und Paketaufbau
 
@@ -131,6 +154,17 @@ Empfohlene Herkunftsangabe für die bearbeiteten Plugin-Logos:
 > Giraffenzeichnung: Caterina Behrendt, https://www.caterinabehrendt.de/ — CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/. Für gIraffePro mit ChatGPT/OpenAI-Bildgenerierung bearbeitet: Kreisrahmen und Landschaft ergänzt; zusätzlich eine Variante mit grauen Landschaftskonturen erstellt.
 
 Die Grafiklizenz gilt unabhängig von der GPL-Lizenz des Programmcodes. Die Kennzeichnung nennt die menschliche Urheberin der Ausgangszeichnung und macht die anschließende KI-Bearbeitung transparent.
+
+### Geodaten des Beispiels
+
+Für die Geodaten gelten die jeweiligen Quellen- und Lizenzangaben unabhängig von GPL und Grafiklizenz:
+
+- **ATKIS-Streckennetz / LGLN:** CC BY 4.0.
+- **NLWKN-Schutzgebiete und Schutzobjekte:** Datenlizenz Deutschland – Namensnennung – Version 2.0 (`dl-de/by-2-0`).
+- **BKG-Verwaltungsgebiete VG250:** Datenlizenz Deutschland – Namensnennung – Version 2.0 (`dl-de/by-2-0`).
+- **OpenStreetMap-Hintergrund:** Quellenvermerk „© OpenStreetMap contributors“ und die [OpenStreetMap-Nutzungs- und Lizenzhinweise](https://www.openstreetmap.org/copyright) beachten; die Hintergrundkarte wird online geladen.
+
+Vollständige Datensatz- und Bearbeitungshinweise stehen in der README und den Lizenzunterlagen des Beispielpakets. Für die Kartenabbildungen auf der Homepage sind sie zusätzlich unter [Lizenzen und Grafiken](https://giraffepro.de/docs/GIRAFFEPRO/GRAFIKEN/) dokumentiert.
 
 ## Kontakt
 
