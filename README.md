@@ -2,7 +2,7 @@
 
 **Grüne Infrastruktur in der Projektphase 0 sichtbar machen.**
 
-Plugin-Version 1.0.6 · Dokumentation: 1. November 2026
+Plugin-Version 1.0.7 · Dokumentation: 2. November 2026
 
 [Homepage](https://giraffepro.de/) · [Quellcode](https://github.com/geogiraffer/gIraffePro/) · [Fehler melden](https://github.com/geogiraffer/gIraffePro/issues) · [Releases](https://github.com/geogiraffer/gIraffePro/releases)
 
@@ -30,14 +30,20 @@ Die Python-Module verwenden QGIS/PyQGIS und die Python-Standardbibliothek; sie s
 
 ### Getestete Umgebung
 
-Das Plugin wurde vom Projektentwickler bisher mit **QGIS 3.44 unter Fedora Linux in einer Mamba-Umgebung** getestet. Andere QGIS-Versionen, Betriebssysteme und Installationsarten sind damit nicht als getestet ausgewiesen. Die Mindestversion 3.40 in den Metadaten ist von diesem dokumentierten Teststand zu unterscheiden.
+Die dokumentierte Testumgebung ist **QGIS 3.44 unter Fedora Linux in einer Mamba-Umgebung**. Für Version **1.0.7** hat der Projektentwickler folgende Praxistests in QGIS erfolgreich bestätigt:
+
+- Verarbeitung mit **FFH als einzigem Fachdatensatz**.
+- Verarbeitung mit einer **einzelnen Punkt- oder Linienvariante** einschließlich Pufferung.
+- Verarbeitung einer **gemischten Auswahl** einschließlich Zusammenführung und Gewichtung sowie Kontrolle der ausgewählten Info-Layer.
+
+Diese Tests bestätigen die genannten Anwendungsfälle, nicht jede mögliche Kombination von Datensätzen und Parametern. Andere QGIS-Versionen, Betriebssysteme und Installationsarten sind damit nicht als getestet ausgewiesen. Die Mindestversion 3.40 in den Metadaten ist vom dokumentierten Teststand zu unterscheiden.
 
 ## Installation
 
 1. Die fertige Plugin-ZIP aus einem [Release](https://github.com/geogiraffer/gIraffePro/releases) herunterladen, sofern dort bereitgestellt.
 2. In QGIS **Erweiterungen → Erweiterungen verwalten und installieren → Aus ZIP installieren** öffnen.
 3. Die ZIP auswählen, installieren und das Plugin aktivieren.
-4. Bei einem Update QGIS neu starten, falls noch alte Einträge oder Icons angezeigt werden.
+4. Bei einem Update QGIS anschließend neu starten, damit Provider und Algorithmen vollständig neu geladen werden.
 
 In der ZIP muss direkt der Ordner `giraffePro/` mit `metadata.txt` und `__init__.py` liegen. Die ZIP muss vor der Installation nicht entpackt werden. Automatisch erzeugte GitHub-Quellcodearchive sind bei einer zusätzlichen Repository-Ordnerebene nicht direkt installierbar; verwende den ausdrücklich bereitgestellten Plugin-ZIP-Anhang eines Releases.
 
@@ -51,6 +57,14 @@ Im Processing-Provider **gIraffePro** stehen zwei Gruppen bereit:
 | Verarbeitung | Green Infrastructure fast filter and estimation Project (gIraffePro) | Bewertete Fachdaten im Suchraum verarbeiten und Ergebnisse erzeugen |
 
 Beide Werkzeuge sind außerdem über das Plugin-Menü und eigene Toolbar-Schaltflächen erreichbar. 
+
+### Optionale Fachdaten ab Version 1.0.7
+
+Alle unterstützten Fachdaten-Eingaben sind in beiden Werkzeugen **optional**. Mindestens ein Fachdatensatz muss gewählt werden. Beispielsweise sind Läufe nur mit FFH, nur mit NSG oder nur mit punktuellen Naturdenkmalen möglich. Projektachse, Suchraum und Ausgabeangaben bleiben für das Hauptwerkzeug erforderlich. Bewertungs- und Pufferwerte einer ausgelassenen Eingabe werden nicht verwendet.
+
+Nicht gewählte Fachdaten werden übersprungen: Sie erzeugen keine Vorbereitungsdateien und keine eigenen Info-Layer. Geometrievarianten einer Gruppe werden nur aus den tatsächlich vorhandenen Eingaben zusammengeführt. Fehlende Wertfelder und nicht lesbare, ausdrücklich angegebene Datenquellen führen zu einer verständlichen Fehlermeldung.
+
+**Die Aussage gilt nur für die ausgewählten Eingangsdaten.** Nicht berücksichtigte Schutzbelange können nicht aus dem Ergebnis abgeleitet werden. Eine grüne Darstellung bestätigt keine Konfliktfreiheit. Die zusätzlichen §30-Biotop-Eingaben 12–14 des bisherigen Hauptdialogs werden weiterhin nicht ausgewertet; sie ersetzen keinen Fachdatensatz aus den Eingaben 1–11.
 
 ### 1. Vorbereitung: Fachdatenbewertung
 
@@ -72,7 +86,7 @@ Die voreingestellten Werte von **1 bis 3** sind ein Vorschlag für ein Gewichtun
 | 10 | geschützte Landschaftsbestandteile (GLB)  | Linie | `Wert_GLB` |
 | 11 | geschützte Landschaftsbestandteile (GLB)  | Fläche | `Wert_GLB` |
 
-1. Die Fachlayer auswählen.
+1. Einen oder mehrere Fachlayer auswählen; die übrigen Fachdaten-Eingaben leer lassen.
 2. Das vorgeschlagene Gewichtungsschema fachlich prüfen und die Bewertung von **1 bis 3** je Datensatz bei Bedarf anpassen.
 3. Bundesland-Kennung und Ausgabeordner angeben.
 4. Werkzeug ausführen. Linien und Flächen durchlaufen vorher die Geometriereparatur; Punktdaten erhalten das Wertfeld direkt.
@@ -82,7 +96,7 @@ Die Ausgabe erfolgt je Fachdatenart als eigene GeoJSON-Datei, beispielsweise `gI
 ### 2. Verarbeitung: Hauptwerkzeug
 
 1. Die Projektachse und die Breite des Suchraums angeben.
-2. Die vorbereiteten Fachdaten den passenden Eingaben zuordnen.
+2. Einen oder mehrere vorbereitete Fachdatensätze zuordnen; nicht benötigte Eingaben leer lassen.
 3. Puffer für punktuelle und lineare Schutzobjekte festlegen; weitere Parameter entsprechend dem Dialog befüllen.
 4. QML-Layerstile, Streckenbezeichnung sowie Ordner für Ergebnisse, Info-Layer und temporäre Dateien auswählen.
 5. Verarbeitung starten und Ergebnisse fachlich prüfen.
@@ -122,8 +136,10 @@ Technische IDs wie `giraffepro:fachdatenbewertung` und `giraffepro:giraffe_main`
 Beim Packen aus dem übergeordneten Verzeichnis nur den Plugin-Ordner einschließen, beispielsweise:
 
 ```bash
-zip -r gIraffePro_1.0.6.zip giraffePro/ -x '*/__pycache__/*' '*.pyc' '*~'
+zip -r gIraffePro_1.0.7.zip giraffePro/ -x '*/__pycache__/*' '*.pyc' '*~' '*/tests/*' '*/TESTHINWEISE.md'
 ```
+
+Entwicklungstests gehören nicht in die Installations-ZIP. Sie können getrennt im Repository unter `tests/` aufbewahrt werden.
 
 ## Lizenz
 
@@ -178,4 +194,14 @@ Vollständige Datensatz- und Bearbeitungshinweise stehen in der README und den L
 
 Fehlermeldungen, Fragen und Verbesserungsvorschläge können über die [GitHub-Issues](https://github.com/geogiraffer/gIraffePro/issues) eingereicht werden. Hilfreich sind dabei die Plugin- und QGIS-Version, das Betriebssystem, eine Beschreibung der Arbeitsschritte und die vollständige Fehlermeldung. Für Beispieldaten müssen die nötigen Weitergaberechte vorliegen.
 
+
+## Änderungen in Version 1.0.7
+
+- Alle elf unterstützten Fachdaten-Eingaben in Vorbereitung und Verarbeitung sind optional; mindestens ein Fachdatensatz bleibt erforderlich.
+- Nicht ausgewählte Eingaben werden übersprungen und erzeugen keine eigenen Vorbereitungsdateien oder Info-Layer.
+- Zusammenführung und Gewichtung berücksichtigen nur vorhandene Datensätze und Geometrievarianten.
+- Nicht lesbare, ausdrücklich angegebene Datenquellen und fehlende Wertfelder werden mit einer Fehlermeldung zurückgewiesen.
+- Der Puffer für lineare Naturdenkmäler wird korrekt als numerischer Wert gelesen.
+- Hauptergebnis-Pfade werden als Zeichenketten statt versehentlicher Ein-Element-Tupel zurückgegeben.
+- Der bisherige Ergebnis-Layername „keine Kollision“ wurde zu „keine Überlagerung ausgewählter Fachdaten“ präzisiert.
 

@@ -3,7 +3,7 @@ name=gIraffePro
 qgisMinimumVersion=3.40
 description=grüne Infrastruktur frühzeitig filtern und einschätzen - in jedem Projekt!
     
-version=1.0.6
+version=1.0.7
 author=Dennis Klingspor
 email=kontakt@geobuilder.net
 about=Ein QGIS Plugin zur Vorverarbeitung grüner Infrastrukturdaten in frühen Planungsphasen.
@@ -11,6 +11,7 @@ about=Ein QGIS Plugin zur Vorverarbeitung grüner Infrastrukturdaten in frühen 
     Der zweite Teil des Algorithmus filtert aus diesen aufbereiteten Datensätzen innerhalb variabler Abstände zum Bauvorhaben die betroffene grüne Infrastruktur und stellt sie gem. der Fachdatengewichtung in Ampellogik dar.
         
     Leicht in der Handhabung, klar in der Aussage: gIraffePro verdichtet komplexe Geodaten zu einer belastbaren Entscheidungsgrundlage für die frühen Phasen des Projektmanagements. So erhält grüne Infrastruktur frühzeitig einen Platz auf der Agenda – bevor eine begrenzte Auswahl technischer Varianten die verfügbaren Möglichkeitsräume bereits einschränkt. Potenzielle Konflikte werden sichtbar, bevor sie zu Planungsrisiken werden.
+    Fachdaten können einzeln oder in beliebiger Kombination ausgewählt werden; mindestens ein Fachdatensatz ist erforderlich.
     Lizenz des Programmcodes: GNU GPL Version 3 oder neuer (GPL-3.0-or-later). Siehe LICENSE.
 homepage=https://giraffepro.de/
 tags=green infrastructure,nature conservation,protected areas,infrastructure planning,environmental planning,spatial analysis,processing,natura 2000
@@ -22,4 +23,5 @@ experimental=False
 deprecated=False
 hasProcessingProvider=True
 
-changelog=1.0.6: Programmcode unter GPL-3.0-or-later gekennzeichnet; vollständiger Lizenztext und README-Entwurf ergänzt.
+changelog=1.0.7: Fachdaten in Vorbereitung und Verarbeitung optional; nicht gewählte Eingaben werden übersprungen. Dynamische Gewichtung und Info-Ausgaben; numerischer Puffer für lineare Naturdenkmäler korrigiert.
+    1.0.6: Programmcode unter GPL-3.0-or-later gekennzeichnet; vollständiger Lizenztext und README-Entwurf ergänzt.
