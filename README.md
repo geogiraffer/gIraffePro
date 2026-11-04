@@ -2,7 +2,7 @@
 
 **Grüne Infrastruktur in der Projektphase 0 sichtbar machen.**
 
-Plugin-Version 1.0.7 · Dokumentation: 2. November 2026
+Plugin-Version 1.0.7 · Dokumentation: 4. November 2026
 
 [Homepage](https://giraffepro.de/) · [Quellcode](https://github.com/geogiraffer/gIraffePro/) · [Fehler melden](https://github.com/geogiraffer/gIraffePro/issues) · [Releases](https://github.com/geogiraffer/gIraffePro/releases)
 
@@ -34,7 +34,7 @@ Die dokumentierte Testumgebung ist **QGIS 3.44 unter Fedora Linux in einer Mamba
 
 ## Installation
 
-1. Die fertige Plugin-ZIP aus einem [Release](https://github.com/geogiraffer/gIraffePro/releases) herunterladen, sofern dort bereitgestellt.
+1. Die fertige Plugin-ZIP aus einem [Release](https://github.com/geogiraffer/gIraffePro/releases) herunterladen.
 2. In QGIS **Erweiterungen → Erweiterungen verwalten und installieren → Aus ZIP installieren** öffnen.
 3. Die ZIP auswählen, installieren und das Plugin aktivieren.
 4. Bei einem Update QGIS anschließend neu starten, damit Provider und Algorithmen vollständig neu geladen werden.
@@ -54,7 +54,7 @@ Beide Werkzeuge sind außerdem über das Plugin-Menü und eigene Toolbar-Schaltf
 
 ### Optionale Fachdaten ab Version 1.0.7
 
-Alle unterstützten Fachdaten-Eingaben sind in beiden Werkzeugen **optional**. Mindestens ein Fachdatensatz muss gewählt werden. Beispielsweise sind Läufe nur mit FFH, nur mit NSG oder nur mit punktuellen Naturdenkmalen möglich. Projektachse, Suchraum und Ausgabeangaben bleiben für das Hauptwerkzeug erforderlich. Bewertungs- und Pufferwerte einer ausgelassenen Eingabe werden nicht verwendet.
+Alle elf unterstützten Fachdaten-Eingaben sind in beiden Werkzeugen **optional**. Mindestens ein Fachdatensatz muss gewählt werden. Beispielsweise sind Läufe nur mit FFH, nur mit NSG oder nur mit punktuellen Naturdenkmalen möglich. Projektachse, Suchraum und Ausgabeangaben bleiben für das Hauptwerkzeug erforderlich. Bewertungs- und Pufferwerte einer ausgelassenen Eingabe werden nicht verwendet.
 
 Nicht gewählte Fachdaten werden übersprungen: Sie erzeugen keine Vorbereitungsdateien und keine eigenen Info-Layer. Geometrievarianten einer Gruppe werden nur aus den tatsächlich vorhandenen Eingaben zusammengeführt. Fehlende Wertfelder und nicht lesbare, ausdrücklich angegebene Datenquellen führen zu einer verständlichen Fehlermeldung.
 
@@ -65,6 +65,16 @@ Nicht gewählte Fachdaten werden übersprungen: Sie erzeugen keine Vorbereitungs
 Das Werkzeug verarbeitet folgende elf Eingaben. Punkt-, Linien- und Flächenvarianten derselben Fachdatenart erhalten bewusst denselben Wertfeldnamen.
 
 Die voreingestellten Werte von **1 bis 3** sind ein Vorschlag für ein Gewichtungsschema und keine allgemeingültige oder behördliche Einstufung. Fachkundige Nutzende können die Werte prüfen und anpassen. Das verwendete Schema und etwaige Änderungen sollten für die spätere Einordnung der Ergebnisse dokumentiert werden.
+
+Im Ampelstil des Beispielpakets sind die Bewertungswerte wie folgt zugeordnet:
+
+| Bewertungswert | Farbe |
+| --- | --- |
+| 1 | Grün |
+| 2 | Gelb |
+| 3 | Rot |
+
+Bei räumlichen Überlagerungen der verarbeiteten Fachdaten wird für den jeweiligen Bereich die **höchste vorhandene Bewertung** übernommen. Die Werte werden nicht addiert oder gemittelt. Die Farbzuordnung ergibt sich aus dem verwendeten QML-Layerstil; die fachliche Bedeutung der Werte bestimmt das gewählte Gewichtungsschema.
 
 | Nr. | Fachdaten | Geometrie | Wertfeld |
 | --- | --- | --- | --- |
@@ -102,7 +112,7 @@ Das Hauptwerkzeug erstellt unter anderem Ausgaben für QGIS, X2Bim und InfraMaps
 Das Beispiel zeigt den Weg von vorhandenen Strecken- und Naturschutzdaten zur aufbereiteten Entscheidungsgrundlage für eine frühe Projektphase.
 
 - [Beispielpaket herunterladen: gIraffePro_Strecke2200.zip](https://github.com/geogiraffer/gIraffePro/releases/download/v1.0.6/gIraffePro_Strecke2200.zip)
-- [Release mit Plugin und Beispielpaket](https://github.com/geogiraffer/gIraffePro/releases/tag/v1.0.6)
+- [Beispielpaket im Release v1.0.6](https://github.com/geogiraffer/gIraffePro/releases/tag/v1.0.6)
 - [Bebilderte Anleitung auf der Homepage](https://giraffepro.de/docs/GIRAFFEPRO/BEISPIEL/)
 
 1. Das vollständige Beispielpaket herunterladen und entpacken. Die Ordnerstruktur beibehalten.
@@ -121,6 +131,7 @@ Alle im Beispiel bereitgestellten Ausgangsdaten wurden im **November 2026** heru
 - `processing_provider/giraffepro_provider.py`: Registrierung der Werkzeuge.
 - `processing_provider/fachdatenbewertung.py`: Vorbereitung der Fachdaten.
 - `processing_provider/giraffe_main.py`: Hauptverarbeitung.
+- `processing_provider/fachdaten_schema.py`: gemeinsame Definitionen und Prüfung der optionalen Fachdateneingaben.
 - `processing_provider/cleanup_1.py` und `cleanup_2.py`: interne Verarbeitungsschritte.
 - `metadata.txt`: Plugin-Metadaten.
 - `LICENSE`: vollständiger GPLv3-Lizenztext.
