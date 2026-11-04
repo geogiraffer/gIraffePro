@@ -30,13 +30,7 @@ Die Python-Module verwenden QGIS/PyQGIS und die Python-Standardbibliothek; sie s
 
 ### Getestete Umgebung
 
-Die dokumentierte Testumgebung ist **QGIS 3.44 unter Fedora Linux in einer Mamba-Umgebung**. Für Version **1.0.7** hat der Projektentwickler folgende Praxistests in QGIS erfolgreich bestätigt:
-
-- Verarbeitung mit **FFH als einzigem Fachdatensatz**.
-- Verarbeitung mit einer **einzelnen Punkt- oder Linienvariante** einschließlich Pufferung.
-- Verarbeitung einer **gemischten Auswahl** einschließlich Zusammenführung und Gewichtung sowie Kontrolle der ausgewählten Info-Layer.
-
-Diese Tests bestätigen die genannten Anwendungsfälle, nicht jede mögliche Kombination von Datensätzen und Parametern. Andere QGIS-Versionen, Betriebssysteme und Installationsarten sind damit nicht als getestet ausgewiesen. Die Mindestversion 3.40 in den Metadaten ist vom dokumentierten Teststand zu unterscheiden.
+Die dokumentierte Testumgebung ist **QGIS 3.44 unter Fedora Linux in einer Mamba-Umgebung**.
 
 ## Installation
 
@@ -64,7 +58,7 @@ Alle unterstützten Fachdaten-Eingaben sind in beiden Werkzeugen **optional**. M
 
 Nicht gewählte Fachdaten werden übersprungen: Sie erzeugen keine Vorbereitungsdateien und keine eigenen Info-Layer. Geometrievarianten einer Gruppe werden nur aus den tatsächlich vorhandenen Eingaben zusammengeführt. Fehlende Wertfelder und nicht lesbare, ausdrücklich angegebene Datenquellen führen zu einer verständlichen Fehlermeldung.
 
-**Die Aussage gilt nur für die ausgewählten Eingangsdaten.** Nicht berücksichtigte Schutzbelange können nicht aus dem Ergebnis abgeleitet werden. Eine grüne Darstellung bestätigt keine Konfliktfreiheit. Die zusätzlichen §30-Biotop-Eingaben 12–14 des bisherigen Hauptdialogs werden weiterhin nicht ausgewertet; sie ersetzen keinen Fachdatensatz aus den Eingaben 1–11.
+**Die Aussage gilt nur für die ausgewählten Eingangsdaten.** Nicht berücksichtigte Schutzbelange können nicht aus dem Ergebnis abgeleitet werden. Eine grüne Darstellung bestätigt keine Konfliktfreiheit. Die zusätzlichen §30-Biotop-Eingaben 12–14 des bisherigen Hauptdialogs werden weiterhin nicht ausgewertet.
 
 ### 1. Vorbereitung: Fachdatenbewertung
 
@@ -133,13 +127,6 @@ Alle im Beispiel bereitgestellten Ausgangsdaten wurden im **November 2026** heru
 
 Technische IDs wie `giraffepro:fachdatenbewertung` und `giraffepro:giraffe_main` bleiben unabhängig von sichtbaren Bezeichnungen stabil.
 
-Beim Packen aus dem übergeordneten Verzeichnis nur den Plugin-Ordner einschließen, beispielsweise:
-
-```bash
-zip -r gIraffePro_1.0.7.zip giraffePro/ -x '*/__pycache__/*' '*.pyc' '*~' '*/tests/*' '*/TESTHINWEISE.md'
-```
-
-Entwicklungstests gehören nicht in die Installations-ZIP. Sie können getrennt im Repository unter `tests/` aufbewahrt werden.
 
 ## Lizenz
 
