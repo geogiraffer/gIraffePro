@@ -2,19 +2,21 @@
 name=gIraffePro
 qgisMinimumVersion=3.40
 description=Green Infrastructure fast filter and estimation project. Early environmental screening for linear infrastructure projects using adjustable search areas and traffic-light ratings.
-    
+
 version=1.0.7
 author=Dennis Klingspor
 email=kontakt@geobuilder.net
-about=grüne Infrastruktur frühzeitig filtern und einschätzen in linearen Bauprojekten! Ein QGIS Plugin zur Vorverarbeitung grüner Infrastrukturdaten in frühen Planungsphasen.
-    Die Fachdatenbewertung des Plugins erzeugt ein Wertfeld in Fachgeometrien (FFH-Gebiete, Landschaftsschutzgebiete, Naturdenkmäler, Vogelschutzgebiete, Naturschutzgebiete, geschützte Landschaftsbestandteile) und befüllt es gem. Nutzervorgabe mit den Werten 1,2 und 3. 
-    Der zweite Teil des Algorithmus filtert aus diesen aufbereiteten Datensätzen innerhalb variabler Abstände zum Bauvorhaben die betroffene grüne Infrastruktur und stellt sie gem. der Fachdatengewichtung in Ampellogik dar.
-        
-    Leicht in der Handhabung, klar in der Aussage: gIraffePro verdichtet komplexe Geodaten zu einer belastbaren Entscheidungsgrundlage für die frühen Phasen des Projektmanagements. So erhält grüne Infrastruktur frühzeitig einen Platz auf der Agenda – bevor eine begrenzte Auswahl technischer Varianten die verfügbaren Möglichkeitsräume bereits einschränkt. Potenzielle Konflikte werden sichtbar, bevor sie zu Planungsrisiken werden.
-    Fachdaten können einzeln oder in beliebiger Kombination ausgewählt werden; mindestens ein Fachdatensatz ist erforderlich.
+about=Grüne Infrastruktur frühzeitig filtern und einschätzen in linearen Bauprojekten: gIraffePro ist ein QGIS-Plugin zur Aufbereitung vorhandener naturschutzfachlicher Daten in frühen Planungsphasen.
+    Die Fachdatenbewertung ergänzt ein Wertfeld in FFH-Gebieten, Landschaftsschutzgebieten, Naturdenkmälern, Vogelschutzgebieten, Naturschutzgebieten und geschützten Landschaftsbestandteilen. Das voreingestellte Gewichtungsschema mit Werten von 1 bis 3 ist ein Vorschlag, den fachkundige Nutzende prüfen und an die jeweilige Fragestellung anpassen können.
+    Das Verarbeitungswerkzeug filtert die vorbereiteten Datensätze innerhalb variabler Abstände zu einer Projektachse und stellt potenziell betroffene Elemente grüner Infrastruktur anhand der gewählten Gewichtung in Ampellogik dar. Ein ergänzender Info-Layer erhält den Bezug zu den zugrunde liegenden Fachdaten.
+
+    gIraffePro verdichtet komplexe Geodaten zu einer Grundlage für eine erste räumliche Einschätzung. So können Management und Projektsteuerung Umweltbelange bereits vor der vertieften Planung in die Abwägung von Lösungsansätzen einbeziehen.
+    Die elf unterstützten Fachdateneingaben können einzeln oder in Kombination ausgewählt werden; mindestens ein Datensatz ist erforderlich. Die Aussagekraft hängt von Datenumfang, Aktualität, Gewichtung und Suchräumen ab. Nicht ausgewählte Fachdaten sind nicht Teil der Auswertung.
+    Die Ergebnisse ersetzen keine vertiefte umweltfachliche Prüfung. Eine grüne Darstellung bestätigt keine Konfliktfreiheit.
+    Bisher getestet mit QGIS 3.44 unter Fedora Linux in einer Mamba-Umgebung.
     Lizenz des Programmcodes: GNU GPL Version 3 oder neuer (GPL-3.0-or-later). Siehe LICENSE.
-    
-    gIraffePro supports early environmental screening for linear infrastructure projects. Its preparation tool assigns ratings from 1 to 3 to protected-area and natural-feature datasets using a suggested weighting scheme that expert users can adjust. The processing tool filters these datasets within configurable distances of a project axis and presents the results using traffic-light ratings. Datasets can be selected individually or in combination; at least one is required. The results help project managers and steering groups consider potential environmental constraints before planning options become fixed. They provide preliminary guidance and do not replace a detailed environmental assessment. The source code is licensed under GPL-3.0-or-later.   
+
+    gIraffePro supports early environmental screening for linear infrastructure projects. Its preparation tool assigns ratings from 1 to 3 to protected-area and natural-feature datasets using a suggested weighting scheme that expert users can adjust. The processing tool filters these datasets within configurable distances of a project axis and presents the results using traffic-light ratings. Datasets can be selected individually or in combination; at least one is required. The results help project managers and steering groups consider potential environmental constraints before planning options become fixed. They provide preliminary guidance and do not replace a detailed environmental assessment. The source code is licensed under GPL-3.0-or-later.
 homepage=https://giraffepro.de/
 tags=green infrastructure,nature conservation,protected areas,infrastructure planning,environmental planning,spatial analysis,processing,natura 2000
 category=Vector
