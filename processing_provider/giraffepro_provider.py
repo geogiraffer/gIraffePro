@@ -29,7 +29,7 @@ from pathlib import Path
 
 
 class GIraffeProProvider(QgsProcessingProvider):
-    
+
     def loadAlgorithms(self):
         self.addAlgorithm(GreenInfrastructureFFEProject())
         self.addAlgorithm(Giraffepro_fachdatenbewertung())
@@ -43,7 +43,10 @@ class GIraffeProProvider(QgsProcessingProvider):
         return "gIraffePro"
 
     def longName(self):
-        return "Green Infrastructure fast filter and estimation Project (gIraffePro)"
-        
-    def icon(self): return QIcon(str(Path(__file__).parent.parent / "logo_giraffe.png"))
-        
+        return (
+            "Green Infrastructure fast filter and estimation Project "
+            "(gIraffePro)"
+        )
+
+    def icon(self):
+        return QIcon(str(Path(__file__).parent.parent / "logo_giraffe.png"))

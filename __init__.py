@@ -38,12 +38,13 @@
  This script initializes the plugin, making it known to QGIS.
 """
 
-__author__ = 'Dennis Klingspor'
-__date__ = '2026-01-01'
-__copyright__ = '(C) 2026 by Dennis Klingspor'
+__author__ = "Dennis Klingspor"
+__date__ = "2026-01-01"
+__copyright__ = "(C) 2026 by Dennis Klingspor"
 
 
 # noinspection PyPep8Naming
 def classFactory(iface):
     from .giraffepro import GIraffeProPlugin
+
     return GIraffeProPlugin(iface)

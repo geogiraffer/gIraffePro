@@ -19,8 +19,7 @@
 
 from pathlib import Path
 
-from qgis.PyQt.QtWidgets import QAction
-from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtGui import QAction, QIcon
 from qgis.core import QgsApplication
 
 import processing
@@ -44,9 +43,7 @@ class GIraffeProPlugin:
 
         self.provider = GIraffeProProvider()
 
-        QgsApplication.processingRegistry().addProvider(
-            self.provider
-        )
+        QgsApplication.processingRegistry().addProvider(self.provider)
 
         # ---------------------------------------------------------
         # Icon laden
@@ -56,7 +53,6 @@ class GIraffeProPlugin:
         icon_path = plugin_dir / "logo_giraffe.png"
 
         icon = QIcon(str(icon_path))
-     
 
         # ---------------------------------------------------------
         # Toolbar-Button erzeugen
@@ -64,37 +60,42 @@ class GIraffeProPlugin:
 
         self.action = QAction(
             icon,
-            "Green Infrastructure fast filter and estimation Project (gIraffePro)",
-            self.iface.mainWindow()
+            (
+                "Green Infrastructure fast filter and estimation Project "
+                "(gIraffePro)"
+            ),
+            self.iface.mainWindow(),
         )
 
         self.action.setToolTip(
-            "Filtern und Einschätzen grüner Bestandsinfrastruktur in frühen Planungsphasen"
+            (
+                "Filtern und Einschätzen grüner Bestandsinfrastruktur in "
+                "frühen Planungsphasen"
+            )
         )
 
-        self.action.setStatusTip(
-            "Startet den gIraffePro-Algorithmus"
-        )
+        self.action.setStatusTip("Startet den gIraffePro-Algorithmus")
 
-        self.action.triggered.connect(
-            self.runGreenInfrastructureFFEProject
-        )
+        self.action.triggered.connect(self.runGreenInfrastructureFFEProject)
 
         # ---------------------------------------------------------
         # Button zur QGIS-Toolbar hinzufügen
         # ---------------------------------------------------------
         self.iface.addPluginToMenu("&gIraffePro", self.action)
 
-        self.iface.addToolBarIcon(
-            self.action
-        )
+        self.iface.addToolBarIcon(self.action)
 
-        # Separate entry point for preparing and rating the specialist datasets.
-        assessment_icon = QIcon(str(plugin_dir / "logo_fachdatenbewertung.png"))
+        # Separate entry point for preparing and rating the specialist
+        # datasets.
+        assessment_icon = QIcon(
+            str(plugin_dir / "logo_fachdatenbewertung.png")
+        )
         self.assessment_action = QAction(
             assessment_icon, "Fachdatenbewertung", self.iface.mainWindow()
         )
-        self.assessment_action.setToolTip("Fachdaten bewerten und als geojson speichern")
+        self.assessment_action.setToolTip(
+            "Fachdaten bewerten und als geojson speichern"
+        )
         self.assessment_action.triggered.connect(self.runFachdatenbewertung)
         self.iface.addPluginToMenu("&gIraffePro", self.assessment_action)
         self.iface.addToolBarIcon(self.assessment_action)
@@ -104,9 +105,7 @@ class GIraffeProPlugin:
 
     def runGreenInfrastructureFFEProject(self):
 
-        processing.execAlgorithmDialog(
-            "giraffepro:giraffe_main"
-        )
+        processing.execAlgorithmDialog("giraffepro:giraffe_main")
 
     def unload(self):
 
@@ -120,9 +119,7 @@ class GIraffeProPlugin:
         if self.action is not None:
 
             self.iface.removePluginMenu("&gIraffePro", self.action)
-            self.iface.removeToolBarIcon(
-                self.action
-            )
+            self.iface.removeToolBarIcon(self.action)
 
             self.action.deleteLater()
             self.action = None
@@ -130,8 +127,6 @@ class GIraffeProPlugin:
         # Processing Provider entfernen
         if self.provider is not None:
 
-            QgsApplication.processingRegistry().removeProvider(
-                self.provider
-            )
+            QgsApplication.processingRegistry().removeProvider(self.provider)
 
             self.provider = None

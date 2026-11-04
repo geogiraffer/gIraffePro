@@ -2,7 +2,7 @@
 
 **Grüne Infrastruktur in der Projektphase 0 sichtbar machen.**
 
-Plugin-Version 1.0.7 · Dokumentation: 4. November 2026
+Plugin-Version 1.0.8 · Dokumentation: 4. November 2026
 
 [Homepage](https://giraffepro.de/) · [Quellcode](https://github.com/geogiraffer/gIraffePro/) · [Fehler melden](https://github.com/geogiraffer/gIraffePro/issues) · [Releases](https://github.com/geogiraffer/gIraffePro/releases)
 
@@ -192,6 +192,20 @@ Vollständige Datensatz- und Bearbeitungshinweise stehen in der README und den L
 
 Fehlermeldungen, Fragen und Verbesserungsvorschläge können über die [GitHub-Issues](https://github.com/geogiraffer/gIraffePro/issues) eingereicht werden. Hilfreich sind dabei die Plugin- und QGIS-Version, das Betriebssystem, eine Beschreibung der Arbeitsschritte und die vollständige Fehlermeldung. Für Beispieldaten müssen die nötigen Weitergaberechte vorliegen.
 
+
+## Änderungen in Version 1.0.8
+
+- 57 unqualifizierte Enum-Zugriffe auf aktuelle `Qgis`-Enums umgestellt: Datentypen der Fachlayer, numerische Parameter, Datei-/Ordnerparameter und die Flags zum Verbergen der internen Cleanup-Werkzeuge.
+- `QAction` wird über `qgis.PyQt.QtGui` importiert. Der QGIS-Kompatibilitätswrapper stellt diesen Import auch unter Qt5 bereit.
+- Die verwendeten `Qgis`-Enums sind bereits seit QGIS 3.36 verfügbar. Die erklärte Mindestversion bleibt QGIS 3.40.
+- Gemischte Tabulatoren und Leerzeichen in Python-Einrückungen bereinigt; Codeformatierung und Zeilenlängen im gesamten Plugin vereinheitlicht.
+- Ungenutzte Importe und ungenutzte lokale Pfadvariablen entfernt.
+- Die räumliche Verarbeitungslogik, Parameter-IDs, Bewertungswerte und Dateiformate entsprechen Version 1.0.7.
+- Entwicklungstests und die frühere interne Testanleitung sind nicht in der Installations-ZIP enthalten. Reguläre Dateien im ZIP sind mit Dateirechten `0644` ohne Ausführungsrecht gespeichert.
+
+Lokal geprüft: Python-Syntax, **0 Flake8-Befunde** unter Standardregeln ohne Konfigurationsausnahmen und zehn automatisierte Ablauf-/API-Testgruppen. In der API-Prüfumgebung waren die alten Enum-Aliase absichtlich nicht verfügbar; die Tests prüfen außerdem die Cleanup-Flags sowie das Anlegen, Aufrufen und Entfernen beider Toolbar-Aktionen.
+
+Die Tests verwenden Ersatzmodule und ersetzen keinen echten QGIS-/Qt6-Lauf. Der offizielle PyQGIS4-Checker und ein QGIS-/Qt6-Lauf konnten in der Erstellungsumgebung ohne QGIS nicht ausgeführt werden. Die 57 konkret gemeldeten alten Zugriffe wurden vollständig entfernt. Eine QGIS-4-Kompatibilität wird daher noch nicht in den Metadaten deklariert. Die bestätigten räumlichen QGIS-Praxistests beziehen sich auf Version 1.0.7; die fachliche Verarbeitungslogik ist unverändert.
 
 ## Änderungen in Version 1.0.7
 

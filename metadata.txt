@@ -3,7 +3,7 @@ name=gIraffePro
 qgisMinimumVersion=3.40
 description=Green Infrastructure fast filter and estimation project. Early environmental screening for linear infrastructure projects using adjustable search areas and traffic-light ratings.
 
-version=1.0.7
+version=1.0.8
 author=Dennis Klingspor
 email=kontakt@geobuilder.net
 about=Grüne Infrastruktur frühzeitig filtern und einschätzen in linearen Bauprojekten: gIraffePro ist ein QGIS-Plugin zur Aufbereitung vorhandener naturschutzfachlicher Daten in frühen Planungsphasen.
@@ -27,5 +27,6 @@ experimental=False
 deprecated=False
 hasProcessingProvider=True
 
-changelog=1.0.7: Fachdaten in Vorbereitung und Verarbeitung optional; nicht gewählte Eingaben werden übersprungen. Dynamische Gewichtung und Info-Ausgaben; numerischer Puffer für lineare Naturdenkmäler korrigiert.
+changelog=1.0.8: Qt5/Qt6 compatibility cleanup using scoped Qgis enums and QAction from qgis.PyQt.QtGui; code formatting and unused imports/variables cleaned up. Processing logic unchanged.
+    1.0.7: Fachdaten in Vorbereitung und Verarbeitung optional; nicht gewählte Eingaben werden übersprungen. Dynamische Gewichtung und Info-Ausgaben; numerischer Puffer für lineare Naturdenkmäler korrigiert.
     1.0.6: Programmcode unter GPL-3.0-or-later gekennzeichnet; vollständiger Lizenztext und README-Entwurf ergänzt.
